@@ -3,7 +3,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
   height: 40px;
   padding: 0 16px;
   border-radius: var(--fx-radius-control);
@@ -11,27 +11,44 @@
   font: var(--fx-body);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease,
+    transform 0.15s ease, box-shadow 0.15s ease;
   white-space: nowrap;
 }
 .fx-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.fx-btn:focus-visible {
+  outline: 2px solid var(--fx-chart-1);
+  outline-offset: 2px;
+}
+.fx-btn:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.98);
+}
+.fx-btn svg {
+  flex-shrink: 0;
 }
 .fx-btn--primary {
   background: var(--fx-text-primary);
   color: var(--fx-surface-page);
+  box-shadow: 0 1px 2px rgba(11, 11, 11, 0.12);
 }
 .fx-btn--primary:hover:not(:disabled) {
-  opacity: 0.88;
+  box-shadow: var(--fx-shadow-md);
+  transform: translateY(-1px);
 }
 .fx-btn--secondary {
-  background: transparent;
+  background: var(--fx-surface-card);
   border-color: var(--fx-border-strong);
   color: var(--fx-text-primary);
 }
 .fx-btn--secondary:hover:not(:disabled) {
   background: var(--fx-surface-hover);
+  border-color: var(--fx-text-tertiary);
+  transform: translateY(-1px);
 }
 .fx-btn--ghost {
   background: transparent;
@@ -39,15 +56,22 @@
 }
 .fx-btn--ghost:hover:not(:disabled) {
   background: var(--fx-surface-hover);
+  color: var(--fx-text-primary);
 }
 .fx-btn--danger {
   background: var(--fx-color-danger);
   color: white;
+  box-shadow: 0 1px 2px rgba(208, 59, 59, 0.25);
+}
+.fx-btn--danger:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(208, 59, 59, 0.3);
+  transform: translateY(-1px);
 }
 .fx-btn--sm {
   height: 32px;
   padding: 0 12px;
   font-size: 13px;
+  gap: 5px;
 }
 .fx-btn--block {
   width: 100%;
@@ -193,4 +217,117 @@
 .fx-toast--sucesso {
   background: var(--fx-color-success);
   color: white;
+}
+
+/* Info tooltip ("i" de ajuda em funções não óbvias) */
+.fx-info {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.fx-info-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--fx-surface-hover);
+  color: var(--fx-text-tertiary);
+  cursor: help;
+}
+.fx-info-trigger:hover,
+.fx-info-trigger:focus-visible {
+  background: var(--fx-chart-1);
+  color: white;
+  outline: none;
+}
+.fx-info-bubble {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 260px;
+  background: var(--fx-text-primary);
+  color: var(--fx-surface-page);
+  font: var(--fx-caption);
+  line-height: 1.5;
+  padding: 8px 10px;
+  border-radius: var(--fx-radius-control);
+  box-shadow: var(--fx-shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.fx-info-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--fx-text-primary);
+}
+.fx-info-trigger:hover + .fx-info-bubble,
+.fx-info-trigger:focus-visible + .fx-info-bubble {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Marca (logo) da sidebar */
+.fx-logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(155deg, var(--fx-chart-1), #1c5aa8);
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Itens de navegação da sidebar */
+.fx-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px 9px 15px;
+  border-radius: var(--fx-radius-control);
+  color: var(--fx-text-on-sidebar-muted);
+  font-size: 14px;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.fx-nav-item svg {
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+.fx-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fx-text-on-sidebar);
+}
+.fx-nav-item--active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fx-text-on-sidebar);
+  font-weight: 600;
+}
+.fx-nav-item--active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: var(--fx-chart-1);
+}
+.fx-nav-item--active svg {
+  color: var(--fx-chart-1);
 }

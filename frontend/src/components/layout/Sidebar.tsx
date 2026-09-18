@@ -39,13 +39,15 @@ export function Sidebar() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          padding: "0 12px 24px",
+          gap: 10,
+          padding: "0 10px 24px",
           font: "var(--fx-heading-3)",
           color: "var(--fx-text-on-sidebar)",
         }}
       >
-        <Wallet size={20} strokeWidth={2} aria-hidden />
+        <span className="fx-logo-badge">
+          <Wallet size={16} strokeWidth={2.25} aria-hidden />
+        </span>
         Fluxa
       </div>
 
@@ -63,18 +65,7 @@ export function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to}
-              style={({ isActive }) => ({
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "9px 12px",
-                borderRadius: "var(--fx-radius-control)",
-                color: isActive ? "var(--fx-text-on-sidebar)" : "var(--fx-text-on-sidebar-muted)",
-                background: isActive ? "rgba(255,255,255,0.08)" : "transparent",
-                fontWeight: isActive ? 600 : 400,
-                fontSize: 14,
-                textDecoration: "none",
-              })}
+              className={({ isActive }) => `fx-nav-item ${isActive ? "fx-nav-item--active" : ""}`}
             >
               <item.Icone size={17} strokeWidth={2} aria-hidden />
               {item.label}

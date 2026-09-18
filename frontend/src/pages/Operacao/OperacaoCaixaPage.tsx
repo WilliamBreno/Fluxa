@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowDownToLine, ArrowUpFromLine, ShoppingCart, Undo2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
 import * as turnosApi from "@/api/turnos.api";
 import * as movimentacoesApi from "@/api/movimentacoes.api";
@@ -120,17 +122,24 @@ export function OperacaoCaixaPage() {
 
       <PainelSaldo resumo={resumo} />
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Button onClick={() => setModalAberto("venda")}>+ Venda</Button>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <Button onClick={() => setModalAberto("venda")}>
+          <ShoppingCart size={15} strokeWidth={2} />
+          Venda
+        </Button>
         <Button variant="secondary" onClick={() => setModalAberto("suprimento")}>
-          + Suprimento
+          <ArrowDownToLine size={15} strokeWidth={2} />
+          Suprimento
         </Button>
         {atende("SUPERVISOR") && (
           <Button variant="secondary" onClick={() => setModalAberto("sangria")}>
-            − Sangria
+            <ArrowUpFromLine size={15} strokeWidth={2} />
+            Sangria
           </Button>
         )}
+        <InfoTooltip texto="Suprimento: entrada de dinheiro na gaveta que não é venda (ex.: reforço de troco). Sangria: retirada de dinheiro, só supervisor/gerente/admin, exige motivo permanente." />
         <Button variant="ghost" onClick={() => setModalAberto("cancelamento")}>
+          <Undo2 size={15} strokeWidth={2} />
           Cancelamento / devolução
         </Button>
       </div>

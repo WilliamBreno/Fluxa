@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
 import * as configuracoesApi from "@/api/configuracoes.api";
 import type { ConfiguracaoLoja } from "@/api/configuracoes.api";
@@ -46,7 +47,8 @@ export function SecaoGeral() {
     <Card style={{ maxWidth: 560 }}>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Input
-          label="Teto de gaveta em dinheiro (R$) — sugere sangria acima deste valor"
+          label="Teto de gaveta em dinheiro (R$)"
+          ajuda="Quando o dinheiro em caixa ultrapassar esse valor, o operador recebe um alerta em tempo real sugerindo uma sangria — reduz o risco de assalto e facilita a conferência. Não bloqueia vendas, só avisa."
           type="number"
           step="0.01"
           value={config.tetoGavetaDinheiro}
@@ -54,6 +56,7 @@ export function SecaoGeral() {
         />
         <Input
           label="Tolerância de divergência no fechamento (R$)"
+          ajuda="Diferença máxima (pra mais ou pra menos) entre o valor contado e o esperado que ainda é considerada 'exata'. Acima disso, o sistema exige que o operador explique a causa da divergência antes de confirmar o fechamento."
           type="number"
           step="0.01"
           value={config.toleranciaDivergencia}
@@ -61,6 +64,7 @@ export function SecaoGeral() {
         />
         <Input
           label="Valor mínimo para exigir conferência cruzada (R$)"
+          ajuda="Sangrias e suprimentos acima desse valor ficam pendentes até uma segunda pessoa (diferente de quem lançou) confirmar — só depois disso entram no cálculo do caixa."
           type="number"
           step="0.01"
           value={config.valorMinimoConferenciaCruzada}
@@ -68,6 +72,7 @@ export function SecaoGeral() {
         />
         <Input
           label="Horário do alerta de fechamento automático (HH:mm)"
+          ajuda="Todo dia, nesse horário, o sistema avisa (sem fechar nada sozinho) se algum caixa continuar aberto — a menos que a opção abaixo esteja ativada."
           value={config.horaFechamentoAutomatico}
           onChange={(e) => setConfig({ ...config, horaFechamentoAutomatico: e.target.value })}
         />
@@ -78,9 +83,11 @@ export function SecaoGeral() {
             onChange={(e) => setConfig({ ...config, fecharAutomaticamenteSemContagem: e.target.checked })}
           />
           Forçar fechamento automático sem contagem física quando ninguém fechar (não recomendado)
+          <InfoTooltip texto="Se ativado, o sistema fecha o caixa sozinho no horário configurado usando o valor que ele mesmo esperava — sem nenhuma contagem física real. O relatório deixa isso explícito. Só use como último recurso." />
         </label>
         <Input
           label="Dias de histórico para sugestão de fundo de troco"
+          ajuda="Quantos dias de fechamentos anteriores o sistema olha para calcular a média sugerida na tela de abertura de caixa."
           type="number"
           value={config.diasHistoricoMediaTroco}
           onChange={(e) => setConfig({ ...config, diasHistoricoMediaTroco: Number(e.target.value) })}

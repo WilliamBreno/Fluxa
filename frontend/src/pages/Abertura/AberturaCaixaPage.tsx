@@ -68,7 +68,8 @@ export function AberturaCaixaPage() {
           />
 
           <Input
-            label={`Fundo de troco inicial (R$)${sugestao ? ` — sugestão: R$ ${sugestao}` : ""}`}
+            label="Fundo de troco inicial (R$)"
+            ajuda="Valor em dinheiro que já está na gaveta para dar troco no início do turno. Conte fisicamente antes de informar — não é um valor automático."
             type="number"
             step="0.01"
             min={0}
@@ -77,6 +78,11 @@ export function AberturaCaixaPage() {
             onChange={(e) => setFundoTroco(e.target.value)}
             placeholder="Contagem física do dinheiro na gaveta"
           />
+          {sugestao && (
+            <p style={{ font: "var(--fx-caption)", color: "var(--fx-text-tertiary)", margin: "-10px 0 0" }}>
+              Sugestão com base no histórico deste terminal: R$ {sugestao}
+            </p>
+          )}
 
           <div className="fx-field">
             <label htmlFor="observacoes">Observações (opcional)</label>
