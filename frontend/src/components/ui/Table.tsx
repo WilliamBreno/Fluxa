@@ -21,23 +21,25 @@ export function Table<T>({ colunas, itens, chaveItem, vazio = "Nenhum registro e
   }
 
   return (
-    <table className="fx-table">
-      <thead>
-        <tr>
-          {colunas.map((c) => (
-            <th key={c.chave}>{c.cabecalho}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {itens.map((item) => (
-          <tr key={chaveItem(item)}>
+    <div className="fx-table-scroll">
+      <table className="fx-table">
+        <thead>
+          <tr>
             {colunas.map((c) => (
-              <td key={c.chave}>{c.render(item)}</td>
+              <th key={c.chave}>{c.cabecalho}</th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {itens.map((item) => (
+            <tr key={chaveItem(item)}>
+              {colunas.map((c) => (
+                <td key={c.chave}>{c.render(item)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

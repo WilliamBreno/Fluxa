@@ -36,12 +36,12 @@ export function LeituraXPage() {
 
   return (
     <AppShell titulo="Leitura X — foto do caixa (não trava nada)">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ font: "var(--fx-body-sm)", color: "var(--fx-text-tertiary)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <p style={{ font: "var(--fx-body-sm)", color: "var(--fx-text-tertiary)", margin: 0, minWidth: 240 }}>
           {geradoEm ? `Gerada às ${formatarDataHora(geradoEm)}` : ""} — pode ser consultada quantas vezes quiser,
           a qualquer momento, sem nenhum efeito sobre o caixa.
         </p>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button variant="secondary" size="sm" onClick={carregar}>
             Atualizar
           </Button>

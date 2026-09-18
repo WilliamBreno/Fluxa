@@ -87,7 +87,7 @@ export function FechamentoCaixaPage() {
           <p style={{ color: "var(--fx-text-secondary)" }}>
             O relatório de fechamento (Redução Z) foi gerado e o turno está travado.
           </p>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button variant="secondary" onClick={() => navigate(`/relatorios?turnoId=${turnoId}`)}>
               Ver relatório
             </Button>

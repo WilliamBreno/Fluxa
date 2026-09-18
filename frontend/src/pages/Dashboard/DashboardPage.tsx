@@ -75,7 +75,7 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.6fr) minmax(280px, 1fr)", gap: 16, alignItems: "start" }}>
+      <div className="fx-dashboard-grid-2col">
         {fluxo && <GraficoFluxoCaixa fluxo={fluxo} />}
         <ListaUltimosLancamentos itens={lancamentos} />
       </div>

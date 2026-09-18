@@ -37,14 +37,15 @@ export function LoginPage() {
   return (
     <div
       style={{
-        height: "100vh",
+        minHeight: "100dvh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         background: "var(--fx-surface-page)",
+        padding: 16,
       }}
     >
-      <Card style={{ width: 380 }}>
+      <Card style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ marginBottom: 24, textAlign: "center" }}>
           <div style={{ font: "var(--fx-heading-1)", marginBottom: 4 }}>Fluxa</div>
           <div style={{ font: "var(--fx-body)", color: "var(--fx-text-tertiary)" }}>

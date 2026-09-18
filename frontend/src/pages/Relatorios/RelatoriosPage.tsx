@@ -78,7 +78,7 @@ export function RelatoriosPage() {
       )}
 
       <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
           <span style={{ font: "var(--fx-heading-4)" }}>Comparativo de fechamentos</span>
           <Select
             opcoes={[
@@ -88,7 +88,7 @@ export function RelatoriosPage() {
             ]}
             value={agruparPor}
             onChange={(e) => setAgruparPor(e.target.value as AgruparPor)}
-            style={{ width: 180 }}
+            style={{ width: 180, maxWidth: "100%" }}
           />
         </div>
         <Table

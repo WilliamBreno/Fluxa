@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -8,12 +9,28 @@ interface AppShellProps {
 }
 
 export function AppShell({ titulo, children }: AppShellProps) {
+  const [menuAberto, setMenuAberto] = useState(false);
+  const location = useLocation();
+
+  // Fecha a gaveta do menu automaticamente ao trocar de página (mobile).
+  useEffect(() => {
+    setMenuAberto(false);
+  }, [location.pathname]);
+
+  // Trava o scroll do conteúdo atrás enquanto a gaveta do menu está aberta.
+  useEffect(() => {
+    document.body.style.overflow = menuAberto ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuAberto]);
+
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--fx-surface-page)" }}>
-      <Sidebar />
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <TopBar titulo={titulo} />
-        <main className="fx-scroll" style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: 24 }}>
+    <div className="fx-shell">
+      <Sidebar aberta={menuAberto} onFechar={() => setMenuAberto(false)} />
+      <div className="fx-main">
+        <TopBar titulo={titulo} onAbrirMenu={() => setMenuAberto(true)} />
+        <main className="fx-scroll fx-main-content">
           <div style={{ maxWidth: 1440, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
             {children}
           </div>
