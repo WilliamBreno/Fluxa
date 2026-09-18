@@ -1,21 +1,23 @@
 import { NavLink } from "react-router-dom";
+import { ChartPie, LayoutDashboard, Settings, Store, Wallet, type LucideIcon } from "lucide-react";
 import { usePermissao } from "@/hooks/usePermissao";
 
-interface ItemNav {
-  to?: string;
-  label: string;
-  icone: string;
-  secao?: string;
-  minimo?: "OPERADOR" | "SUPERVISOR" | "GERENTE" | "ADMIN";
-}
+type ItemNav =
+  | { secao: string }
+  | {
+      to: string;
+      label: string;
+      Icone: LucideIcon;
+      minimo?: "OPERADOR" | "SUPERVISOR" | "GERENTE" | "ADMIN";
+    };
 
 const ITENS: ItemNav[] = [
-  { to: "/terminais", label: "Caixas", icone: "🧾" },
-  { to: "/dashboard", label: "Visão geral", icone: "📊", minimo: "SUPERVISOR" },
-  { secao: "Gestão", label: "", icone: "" },
-  { to: "/relatorios", label: "Relatórios", icone: "📈", minimo: "SUPERVISOR" },
-  { secao: "Sistema", label: "", icone: "" },
-  { to: "/configuracoes", label: "Configurações", icone: "⚙️", minimo: "GERENTE" },
+  { to: "/terminais", label: "Caixas", Icone: Store },
+  { to: "/dashboard", label: "Visão geral", Icone: LayoutDashboard, minimo: "SUPERVISOR" },
+  { secao: "Gestão" },
+  { to: "/relatorios", label: "Relatórios", Icone: ChartPie, minimo: "SUPERVISOR" },
+  { secao: "Sistema" },
+  { to: "/configuracoes", label: "Configurações", Icone: Settings, minimo: "GERENTE" },
 ];
 
 export function Sidebar() {
@@ -33,13 +35,23 @@ export function Sidebar() {
         padding: "20px 12px",
       }}
     >
-      <div style={{ padding: "0 12px 24px", font: "var(--fx-heading-3)", color: "var(--fx-text-on-sidebar)" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "0 12px 24px",
+          font: "var(--fx-heading-3)",
+          color: "var(--fx-text-on-sidebar)",
+        }}
+      >
+        <Wallet size={20} strokeWidth={2} aria-hidden />
         Fluxa
       </div>
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {ITENS.map((item, i) =>
-          item.secao ? (
+          "secao" in item ? (
             <div
               key={`secao-${i}`}
               className="fx-overline"
@@ -50,7 +62,7 @@ export function Sidebar() {
           ) : item.minimo && !atende(item.minimo) ? null : (
             <NavLink
               key={item.to}
-              to={item.to!}
+              to={item.to}
               style={({ isActive }) => ({
                 display: "flex",
                 alignItems: "center",
@@ -64,7 +76,7 @@ export function Sidebar() {
                 textDecoration: "none",
               })}
             >
-              <span aria-hidden>{item.icone}</span>
+              <item.Icone size={17} strokeWidth={2} aria-hidden />
               {item.label}
             </NavLink>
           )
