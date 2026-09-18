@@ -1,5 +1,15 @@
 import axios from "axios";
 
+/**
+ * Em dev local, "/api" basta — o Vite faz proxy para o backend (vite.config.ts).
+ * Em produção (frontend na Vercel, backend no Railway), os domínios são
+ * diferentes, então precisa apontar para a URL pública do backend via
+ * VITE_API_URL (configurada nas variáveis de ambiente da Vercel).
+ */
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : "/api";
+
 let accessToken: string | null = null;
 let lojaAtualId: string | null = null;
 
@@ -17,7 +27,7 @@ export function getLojaAtual(): string | null {
 }
 
 export const api = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 

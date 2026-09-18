@@ -3,10 +3,15 @@ import { AppError } from "../../middlewares/errorHandler";
 import * as authService from "./auth.service";
 
 const REFRESH_COOKIE = "fluxa_refresh_token";
+const EM_PRODUCAO = process.env.NODE_ENV === "production";
 const COOKIE_OPTS = {
   httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  // "none" é obrigatório para cookie cross-site (frontend na Vercel, backend
+  // no Railway — domínios diferentes); exige secure:true, que browsers só
+  // aceitam em HTTPS. Em dev local (mesma origem via proxy do Vite), "lax"
+  // basta e não precisa de HTTPS.
+  sameSite: (EM_PRODUCAO ? "none" : "lax") as "none" | "lax",
+  secure: EM_PRODUCAO,
   path: "/api/auth",
 };
 
