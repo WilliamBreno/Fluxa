@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # Superusuário dono do banco — usado só por `prisma migrate` e pelo
+      # script de hardening. A aplicação em runtime usa a role restrita
+      # "fluxa_app" (criada pelo hardening), nunca este superusuário.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-fluxa_dev_superuser_password}
+      POSTGRES_DB: fluxa
+    ports:
+      # 5434 (porta do host, à esquerda) em vez de 5432: esta máquina já tem
+      # um PostgreSQL nativo do Windows escutando em 5432 (e outro projeto
+      # Docker já usa 5433). Ajuste aqui (e nas DATABASE_URL/DIRECT_DATABASE_URL
+      # do backend/.env) se 5434 também estiver ocupada no seu ambiente.
+      - "5434:5432"
+    volumes:
+      - fluxa_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fluxa"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  fluxa_pgdata:

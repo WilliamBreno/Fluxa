@@ -1,0 +1,196 @@
+/* Botões */
+.fx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--fx-radius-control);
+  border: 1px solid transparent;
+  font: var(--fx-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+.fx-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.fx-btn--primary {
+  background: var(--fx-text-primary);
+  color: var(--fx-surface-page);
+}
+.fx-btn--primary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.fx-btn--secondary {
+  background: transparent;
+  border-color: var(--fx-border-strong);
+  color: var(--fx-text-primary);
+}
+.fx-btn--secondary:hover:not(:disabled) {
+  background: var(--fx-surface-hover);
+}
+.fx-btn--ghost {
+  background: transparent;
+  color: var(--fx-text-secondary);
+}
+.fx-btn--ghost:hover:not(:disabled) {
+  background: var(--fx-surface-hover);
+}
+.fx-btn--danger {
+  background: var(--fx-color-danger);
+  color: white;
+}
+.fx-btn--sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.fx-btn--block {
+  width: 100%;
+}
+
+/* Cartões */
+.fx-card {
+  background: var(--fx-surface-card);
+  border: 1px solid var(--fx-border-subtle);
+  border-radius: var(--fx-radius-card);
+  box-shadow: var(--fx-shadow-sm);
+  padding: 20px;
+}
+
+/* Campos */
+.fx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fx-field label {
+  font: var(--fx-caption);
+  font-weight: 600;
+  color: var(--fx-text-secondary);
+}
+.fx-input,
+.fx-select {
+  height: 40px;
+  border-radius: var(--fx-radius-control);
+  border: 1px solid var(--fx-border-strong);
+  background: var(--fx-surface-card);
+  color: var(--fx-text-primary);
+  padding: 0 12px;
+  font: var(--fx-body);
+}
+.fx-input:focus,
+.fx-select:focus {
+  outline: 2px solid var(--fx-chart-1);
+  outline-offset: -1px;
+}
+.fx-input--erro {
+  border-color: var(--fx-color-danger);
+}
+.fx-erro-msg {
+  font: var(--fx-caption);
+  color: var(--fx-color-danger);
+}
+
+/* Badges */
+.fx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--fx-radius-pill);
+  font: var(--fx-caption);
+  font-weight: 600;
+}
+.fx-badge--success {
+  background: var(--fx-color-success-bg);
+  color: var(--fx-color-success);
+}
+.fx-badge--danger {
+  background: var(--fx-color-danger-bg);
+  color: var(--fx-color-danger);
+}
+.fx-badge--warning {
+  background: var(--fx-color-warning-bg);
+  color: var(--fx-color-warning);
+}
+.fx-badge--neutral {
+  background: var(--fx-surface-hover);
+  color: var(--fx-text-secondary);
+}
+
+/* Tabela */
+.fx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--fx-body-sm);
+}
+.fx-table th {
+  text-align: left;
+  font: var(--fx-caption);
+  color: var(--fx-text-tertiary);
+  font-weight: 600;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--fx-border-subtle);
+}
+.fx-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--fx-border-subtle);
+}
+.fx-table tbody tr:hover {
+  background: var(--fx-surface-hover);
+}
+
+/* Modal */
+.fx-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 11, 11, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+.fx-modal {
+  background: var(--fx-surface-card);
+  border-radius: var(--fx-radius-card);
+  box-shadow: var(--fx-shadow-md);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Toast */
+.fx-toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+}
+.fx-toast {
+  background: var(--fx-text-primary);
+  color: var(--fx-surface-page);
+  padding: 12px 16px;
+  border-radius: var(--fx-radius-control);
+  box-shadow: var(--fx-shadow-md);
+  font: var(--fx-body-sm);
+  min-width: 240px;
+}
+.fx-toast--erro {
+  background: var(--fx-color-danger);
+  color: white;
+}
+.fx-toast--sucesso {
+  background: var(--fx-color-success);
+  color: white;
+}

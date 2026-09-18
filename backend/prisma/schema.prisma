@@ -1,0 +1,466 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Conexão usada em runtime pela aplicação (role restrita "fluxa_app" —
+  // sem UPDATE/DELETE em audit_log, ver scripts/run-hardening.ts).
+  url       = env("DATABASE_URL")
+  // Conexão usada só por `prisma migrate` (role superusuária, dona das
+  // tabelas). Precisa ser diferente da de runtime: revogar privilégios do
+  // próprio dono da tabela não tem efeito nenhum no Postgres.
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum RoleUsuario {
+  OPERADOR
+  SUPERVISOR
+  GERENTE
+  ADMIN
+}
+
+enum PeriodoTurno {
+  MANHA
+  TARDE
+  NOITE
+  INTEGRAL
+}
+
+enum StatusTurno {
+  ABERTO
+  FECHADO
+}
+
+enum TipoMovimentacao {
+  VENDA
+  SANGRIA
+  SUPRIMENTO
+  CANCELAMENTO
+  DEVOLUCAO
+  AJUSTE
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  DEBITO
+  CREDITO
+  PIX
+  VALE
+  FIADO
+  OUTRO
+}
+
+enum StatusMovimentacao {
+  ATIVA
+  PENDENTE_CONFERENCIA
+  ESTORNADA
+}
+
+enum StatusFechamento {
+  CONTAGEM_PENDENTE
+  CONTAGEM_REALIZADA
+  CALCULADO
+  CONFIRMADO
+}
+
+enum ClassificacaoFechamento {
+  EXATO
+  SOBRA
+  FALTA
+}
+
+enum AcaoAuditoria {
+  LOGIN
+  LOGIN_FALHO
+  LOGOUT
+  ABERTURA_CAIXA
+  TENTATIVA_ABERTURA_DUPLICADA
+  FECHAMENTO_CAIXA
+  TROCA_OPERADOR
+  MOVIMENTACAO_CRIADA
+  SANGRIA
+  SUPRIMENTO
+  CANCELAMENTO
+  DEVOLUCAO
+  AJUSTE
+  CONFERENCIA_CRUZADA
+  ALTERACAO_CONFIG
+  LEITURA_X
+  ALERTA_TETO_GAVETA
+  FECHAMENTO_AUTOMATICO_ALERTA
+  FECHAMENTO_AUTOMATICO_FORCADO
+  EXPORTACAO_RELATORIO
+  USUARIO_CRIADO
+  USUARIO_ATUALIZADO
+}
+
+enum TipoIntegracao {
+  FISCAL
+  MAQUININHA
+  NOTIFICACAO
+}
+
+enum StatusIntegracao {
+  NAO_APLICAVEL
+  SIMULADO
+  PENDENTE
+  SUCESSO
+  ERRO
+}
+
+enum CanalNotificacao {
+  EMAIL
+  WHATSAPP
+}
+
+enum StatusNotificacao {
+  DESABILITADO
+  PENDENTE
+  ENVIADO
+  ERRO
+}
+
+// ============================================================
+// CADASTRO / TENANT
+// ============================================================
+
+model Loja {
+  id        String   @id @default(uuid())
+  nome      String
+  cnpj      String?  @unique
+  endereco  String?
+  timezone  String   @default("America/Sao_Paulo")
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  terminais    Terminal[]
+  usuarios     UsuarioLoja[]
+  configuracao ConfiguracaoLoja?
+  turnos       TurnoCaixa[]
+  auditLogs    AuditLog[]
+  relatorios   RelatorioFechamento[]
+  notificacoes NotificacaoResumoDiario[]
+  contadores   Contador[]
+
+  @@map("lojas")
+}
+
+model Terminal {
+  id        String   @id @default(uuid())
+  lojaId    String
+  loja      Loja     @relation(fields: [lojaId], references: [id])
+  codigo    String
+  nome      String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  turnos TurnoCaixa[]
+
+  @@unique([lojaId, codigo])
+  @@map("terminais")
+}
+
+model Usuario {
+  id         String      @id @default(uuid())
+  nome       String
+  email      String      @unique
+  senhaHash  String
+  roleGlobal RoleUsuario
+  superAdmin Boolean     @default(false)
+  ativo      Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  lojas         UsuarioLoja[]
+  refreshTokens RefreshToken[]
+
+  turnosAbertos     TurnoCaixa[] @relation("TurnoOperadorAbertura")
+  turnosResponsavel TurnoCaixa[] @relation("TurnoOperadorResponsavel")
+  turnosFechados    TurnoCaixa[] @relation("TurnoOperadorFechamento")
+  turnosSupervisor  TurnoCaixa[] @relation("TurnoSupervisorFechamento")
+
+  movimentacoes            MovimentacaoCaixa[] @relation("MovimentacaoOperador")
+  movimentacoesAutorizadas MovimentacaoCaixa[] @relation("MovimentacaoAutorizadoPor")
+  movimentacoesConferidas  MovimentacaoCaixa[] @relation("MovimentacaoConferidoPor")
+
+  trocasComoAnterior TrocaOperador[] @relation("TrocaOperadorAnterior")
+  trocasComoNovo     TrocaOperador[] @relation("TrocaOperadorNovo")
+  trocasAutorizadas  TrocaOperador[] @relation("TrocaOperadorAutorizadoPor")
+
+  fechamentosConfirmados FechamentoCaixa[]
+  auditLogs              AuditLog[]
+
+  @@map("usuarios")
+}
+
+model UsuarioLoja {
+  id        String      @id @default(uuid())
+  usuarioId String
+  usuario   Usuario     @relation(fields: [usuarioId], references: [id])
+  lojaId    String
+  loja      Loja        @relation(fields: [lojaId], references: [id])
+  role      RoleUsuario
+  ativo     Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  @@unique([usuarioId, lojaId])
+  @@map("usuarios_lojas")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  usuarioId  String
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id])
+  tokenHash  String    @unique
+  criadoEmIp String?
+  expiraEm   DateTime
+  revogadoEm DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([usuarioId])
+  @@map("refresh_tokens")
+}
+
+// ============================================================
+// CAIXA / TURNO
+// ============================================================
+
+model TurnoCaixa {
+  id                String       @id @default(uuid())
+  lojaId            String
+  loja              Loja         @relation(fields: [lojaId], references: [id])
+  terminalId        String
+  terminal          Terminal     @relation(fields: [terminalId], references: [id])
+  numeroSequencial  Int
+  periodo           PeriodoTurno
+  status            StatusTurno  @default(ABERTO)
+
+  operadorAberturaId         String
+  operadorAbertura           Usuario  @relation("TurnoOperadorAbertura", fields: [operadorAberturaId], references: [id])
+  operadorResponsavelAtualId String
+  operadorResponsavelAtual   Usuario  @relation("TurnoOperadorResponsavel", fields: [operadorResponsavelAtualId], references: [id])
+  operadorFechamentoId       String?
+  operadorFechamento         Usuario? @relation("TurnoOperadorFechamento", fields: [operadorFechamentoId], references: [id])
+  supervisorFechamentoId     String?
+  supervisorFechamento       Usuario? @relation("TurnoSupervisorFechamento", fields: [supervisorFechamentoId], references: [id])
+
+  dataAbertura           DateTime  @default(now())
+  dataFechamento         DateTime?
+  fundoTrocoInformado    Decimal   @db.Decimal(12, 2)
+  fundoTrocoSugerido     Decimal?  @db.Decimal(12, 2)
+  observacoesAbertura    String?
+  observacoesFechamento  String?
+  fechamentoAutomatico   Boolean   @default(false)
+
+  movimentacoes  MovimentacaoCaixa[]
+  trocasOperador TrocaOperador[]
+  fechamento     FechamentoCaixa?
+  relatorio      RelatorioFechamento?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([terminalId, numeroSequencial])
+  @@index([lojaId, status])
+  @@index([terminalId, status])
+  @@map("turnos_caixa")
+}
+
+model TrocaOperador {
+  id                 String     @id @default(uuid())
+  turnoId            String
+  turno              TurnoCaixa @relation(fields: [turnoId], references: [id])
+  operadorAnteriorId String
+  operadorAnterior   Usuario    @relation("TrocaOperadorAnterior", fields: [operadorAnteriorId], references: [id])
+  operadorNovoId     String
+  operadorNovo       Usuario    @relation("TrocaOperadorNovo", fields: [operadorNovoId], references: [id])
+  motivo             String?
+  autorizadoPorId    String?
+  autorizadoPor      Usuario?   @relation("TrocaOperadorAutorizadoPor", fields: [autorizadoPorId], references: [id])
+  createdAt          DateTime   @default(now())
+
+  @@index([turnoId])
+  @@map("trocas_operador")
+}
+
+model MovimentacaoCaixa {
+  id             String            @id @default(uuid())
+  turnoId        String
+  turno          TurnoCaixa        @relation(fields: [turnoId], references: [id])
+  tipo           TipoMovimentacao
+  formaPagamento FormaPagamento?
+  valor          Decimal           @db.Decimal(12, 2)
+  motivo         String?
+  descricao      String?
+
+  operadorId      String
+  operador        Usuario  @relation("MovimentacaoOperador", fields: [operadorId], references: [id])
+  autorizadoPorId String?
+  autorizadoPor   Usuario? @relation("MovimentacaoAutorizadoPor", fields: [autorizadoPorId], references: [id])
+  conferidoPorId  String?
+  conferidoPor    Usuario? @relation("MovimentacaoConferidoPor", fields: [conferidoPorId], references: [id])
+  conferidoEm     DateTime?
+
+  vendaReferenciaId String?
+  vendaReferencia   MovimentacaoCaixa?  @relation("MovimentacaoEstorno", fields: [vendaReferenciaId], references: [id])
+  estornos          MovimentacaoCaixa[] @relation("MovimentacaoEstorno")
+
+  status        StatusMovimentacao @default(ATIVA)
+  motivoEstorno String?
+  estornadaEm   DateTime?
+
+  integracoes IntegracaoLog[]
+
+  createdAt DateTime @default(now())
+
+  @@index([turnoId, tipo])
+  @@index([turnoId, formaPagamento])
+  @@index([createdAt])
+  @@map("movimentacoes_caixa")
+}
+
+// ============================================================
+// FECHAMENTO (REDUÇÃO Z)
+// ============================================================
+
+model FechamentoCaixa {
+  id                     String                   @id @default(uuid())
+  turnoId                String                   @unique
+  turno                  TurnoCaixa               @relation(fields: [turnoId], references: [id])
+  status                 StatusFechamento         @default(CONTAGEM_PENDENTE)
+  causaDivergencia       String?
+  divergenciaTotal       Decimal?                 @db.Decimal(12, 2)
+  classificacaoGeral     ClassificacaoFechamento?
+  ajusteAutomaticoGerado Boolean                  @default(false)
+  confirmadoPorId        String?
+  confirmadoPor          Usuario?                 @relation(fields: [confirmadoPorId], references: [id])
+  confirmadoEm           DateTime?
+  createdAt              DateTime                 @default(now())
+
+  contagens FechamentoContagemForma[]
+
+  @@map("fechamentos_caixa")
+}
+
+model FechamentoContagemForma {
+  id             String                   @id @default(uuid())
+  fechamentoId   String
+  fechamento     FechamentoCaixa          @relation(fields: [fechamentoId], references: [id])
+  formaPagamento FormaPagamento
+  valorContado   Decimal                  @db.Decimal(12, 2)
+  valorEsperado  Decimal?                 @db.Decimal(12, 2)
+  divergencia    Decimal?                 @db.Decimal(12, 2)
+  classificacao  ClassificacaoFechamento?
+  contadoEm      DateTime                 @default(now())
+  calculadoEm    DateTime?
+
+  @@unique([fechamentoId, formaPagamento])
+  @@map("fechamento_contagens_forma")
+}
+
+model RelatorioFechamento {
+  id               String     @id @default(uuid())
+  turnoId          String     @unique
+  turno            TurnoCaixa @relation(fields: [turnoId], references: [id])
+  lojaId           String
+  loja             Loja       @relation(fields: [lojaId], references: [id])
+  numeroSequencial Int
+  conteudoJson     Json
+  hashIntegridade  String
+  geradoEm         DateTime   @default(now())
+
+  @@unique([lojaId, numeroSequencial])
+  @@map("relatorios_fechamento")
+}
+
+// ============================================================
+// CONFIGURAÇÃO / AUDITORIA
+// ============================================================
+
+model ConfiguracaoLoja {
+  id                               String   @id @default(uuid())
+  lojaId                           String   @unique
+  loja                             Loja     @relation(fields: [lojaId], references: [id])
+  tetoGavetaDinheiro               Decimal  @default(500) @db.Decimal(12, 2)
+  toleranciaDivergencia            Decimal  @default(5) @db.Decimal(12, 2)
+  valorMinimoConferenciaCruzada    Decimal  @default(200) @db.Decimal(12, 2)
+  horaFechamentoAutomatico         String   @default("23:59")
+  fecharAutomaticamenteSemContagem Boolean  @default(false)
+  diasHistoricoMediaTroco          Int      @default(30)
+  emailsGestorResumoDiario         String[] @default([])
+  updatedAt                        DateTime @updatedAt
+
+  @@map("configuracoes_loja")
+}
+
+model AuditLog {
+  id           String        @id @default(uuid())
+  lojaId       String?
+  loja         Loja?         @relation(fields: [lojaId], references: [id])
+  usuarioId    String?
+  usuario      Usuario?      @relation(fields: [usuarioId], references: [id])
+  acao         AcaoAuditoria
+  entidade     String
+  entidadeId   String?
+  detalhesJson Json?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime      @default(now())
+
+  @@index([lojaId, createdAt])
+  @@index([usuarioId])
+  @@index([acao])
+  @@map("audit_log")
+}
+
+model Contador {
+  id         String @id @default(uuid())
+  lojaId     String
+  loja       Loja   @relation(fields: [lojaId], references: [id])
+  chave      String
+  valorAtual Int    @default(0)
+
+  @@unique([lojaId, chave])
+  @@map("contadores")
+}
+
+// ============================================================
+// INTEGRAÇÕES (adapters — stub nesta v1)
+// ============================================================
+
+model IntegracaoLog {
+  id              String             @id @default(uuid())
+  tipo            TipoIntegracao
+  movimentacaoId  String?
+  movimentacao    MovimentacaoCaixa? @relation(fields: [movimentacaoId], references: [id])
+  status          StatusIntegracao   @default(NAO_APLICAVEL)
+  payloadEnvio    Json?
+  payloadResposta Json?
+  erro            String?
+  createdAt       DateTime           @default(now())
+
+  @@index([tipo, status])
+  @@map("integracao_log")
+}
+
+model NotificacaoResumoDiario {
+  id                String            @id @default(uuid())
+  lojaId            String
+  loja              Loja              @relation(fields: [lojaId], references: [id])
+  data              DateTime
+  destinatarios     String[]
+  canal             CanalNotificacao
+  status            StatusNotificacao @default(DESABILITADO)
+  conteudoJson      Json?
+  tentativas        Int               @default(0)
+  ultimaTentativaEm DateTime?
+  createdAt         DateTime          @default(now())
+
+  @@unique([lojaId, data, canal])
+  @@map("notificacoes_resumo_diario")
+}
