@@ -97,6 +97,9 @@ enum AcaoAuditoria {
   EXPORTACAO_RELATORIO
   USUARIO_CRIADO
   USUARIO_ATUALIZADO
+  IMPORTACAO_EXTRATO_CARTAO
+  CONCILIACAO_EXECUTADA
+  CONCILIACAO_RESOLVIDA_MANUAL
 }
 
 enum TipoIntegracao {
@@ -125,6 +128,43 @@ enum StatusNotificacao {
   ERRO
 }
 
+enum StatusExtrato {
+  PROCESSANDO
+  CONCLUIDO
+  ERRO
+}
+
+enum Bandeira {
+  VISA
+  MASTERCARD
+  ELO
+  AMEX
+  HIPERCARD
+  OUTRA
+}
+
+enum ModalidadeCartao {
+  DEBITO
+  CREDITO_A_VISTA
+  CREDITO_PARCELADO
+}
+
+enum StatusConciliacaoTransacao {
+  CONCILIADO
+  DIVERGENTE
+  SEM_VENDA
+  MANUAL
+  IGNORADO
+}
+
+enum StatusConciliacaoMovimentacao {
+  SEM_EXTRATO
+  CONCILIADO
+  DIVERGENTE
+  PENDENTE_REVISAO
+  MANUAL
+}
+
 // ============================================================
 // CADASTRO / TENANT
 // ============================================================
@@ -146,6 +186,11 @@ model Loja {
   relatorios   RelatorioFechamento[]
   notificacoes NotificacaoResumoDiario[]
   contadores   Contador[]
+
+  extratosCartao         ExtratoCartao[]
+  transacoesExtrato      TransacaoExtratoCartao[]
+  conciliacoesCartao     ConciliacaoCartao[]
+  taxasContratadasCartao TaxaContratadaCartao[]
 
   @@map("lojas")
 }
@@ -195,6 +240,9 @@ model Usuario {
   fechamentosConfirmados FechamentoCaixa[]
   auditLogs              AuditLog[]
 
+  extratosCartaoImportados ExtratoCartao[]
+  conciliacoesResolvidas   ConciliacaoCartao[]
+
   @@map("usuarios")
 }
 
@@ -231,14 +279,14 @@ model RefreshToken {
 // ============================================================
 
 model TurnoCaixa {
-  id                String       @id @default(uuid())
-  lojaId            String
-  loja              Loja         @relation(fields: [lojaId], references: [id])
-  terminalId        String
-  terminal          Terminal     @relation(fields: [terminalId], references: [id])
-  numeroSequencial  Int
-  periodo           PeriodoTurno
-  status            StatusTurno  @default(ABERTO)
+  id               String       @id @default(uuid())
+  lojaId           String
+  loja             Loja         @relation(fields: [lojaId], references: [id])
+  terminalId       String
+  terminal         Terminal     @relation(fields: [terminalId], references: [id])
+  numeroSequencial Int
+  periodo          PeriodoTurno
+  status           StatusTurno  @default(ABERTO)
 
   operadorAberturaId         String
   operadorAbertura           Usuario  @relation("TurnoOperadorAbertura", fields: [operadorAberturaId], references: [id])
@@ -249,13 +297,13 @@ model TurnoCaixa {
   supervisorFechamentoId     String?
   supervisorFechamento       Usuario? @relation("TurnoSupervisorFechamento", fields: [supervisorFechamentoId], references: [id])
 
-  dataAbertura           DateTime  @default(now())
-  dataFechamento         DateTime?
-  fundoTrocoInformado    Decimal   @db.Decimal(12, 2)
-  fundoTrocoSugerido     Decimal?  @db.Decimal(12, 2)
-  observacoesAbertura    String?
-  observacoesFechamento  String?
-  fechamentoAutomatico   Boolean   @default(false)
+  dataAbertura          DateTime  @default(now())
+  dataFechamento        DateTime?
+  fundoTrocoInformado   Decimal   @db.Decimal(12, 2)
+  fundoTrocoSugerido    Decimal?  @db.Decimal(12, 2)
+  observacoesAbertura   String?
+  observacoesFechamento String?
+  fechamentoAutomatico  Boolean   @default(false)
 
   movimentacoes  MovimentacaoCaixa[]
   trocasOperador TrocaOperador[]
@@ -289,21 +337,30 @@ model TrocaOperador {
 }
 
 model MovimentacaoCaixa {
-  id             String            @id @default(uuid())
+  id             String           @id @default(uuid())
   turnoId        String
-  turno          TurnoCaixa        @relation(fields: [turnoId], references: [id])
+  turno          TurnoCaixa       @relation(fields: [turnoId], references: [id])
   tipo           TipoMovimentacao
   formaPagamento FormaPagamento?
-  valor          Decimal           @db.Decimal(12, 2)
+  valor          Decimal          @db.Decimal(12, 2)
   motivo         String?
   descricao      String?
 
+  // Melhoria B (offline/sincronização): chave gerada no cliente antes de
+  // qualquer tentativa de rede — reenviar a mesma operação nunca duplica.
+  chaveIdempotencia String? @unique
+
+  // Melhoria C (conciliação de cartões): NSU devolvido pelo adapter de
+  // maquininha, indexado aqui para o motor de conciliação nível 1 não
+  // precisar vasculhar o Json de IntegracaoLog a cada execução.
+  nsuMaquininha String?
+
   operadorId      String
-  operador        Usuario  @relation("MovimentacaoOperador", fields: [operadorId], references: [id])
+  operador        Usuario   @relation("MovimentacaoOperador", fields: [operadorId], references: [id])
   autorizadoPorId String?
-  autorizadoPor   Usuario? @relation("MovimentacaoAutorizadoPor", fields: [autorizadoPorId], references: [id])
+  autorizadoPor   Usuario?  @relation("MovimentacaoAutorizadoPor", fields: [autorizadoPorId], references: [id])
   conferidoPorId  String?
-  conferidoPor    Usuario? @relation("MovimentacaoConferidoPor", fields: [conferidoPorId], references: [id])
+  conferidoPor    Usuario?  @relation("MovimentacaoConferidoPor", fields: [conferidoPorId], references: [id])
   conferidoEm     DateTime?
 
   vendaReferenciaId String?
@@ -314,13 +371,15 @@ model MovimentacaoCaixa {
   motivoEstorno String?
   estornadaEm   DateTime?
 
-  integracoes IntegracaoLog[]
+  integracoes       IntegracaoLog[]
+  conciliacaoCartao ConciliacaoCartao?
 
   createdAt DateTime @default(now())
 
   @@index([turnoId, tipo])
   @@index([turnoId, formaPagamento])
   @@index([createdAt])
+  @@index([nsuMaquininha])
   @@map("movimentacoes_caixa")
 }
 
@@ -393,6 +452,7 @@ model ConfiguracaoLoja {
   fecharAutomaticamenteSemContagem Boolean  @default(false)
   diasHistoricoMediaTroco          Int      @default(30)
   emailsGestorResumoDiario         String[] @default([])
+  toleranciaDiasConciliacaoCartao  Int      @default(2)
   updatedAt                        DateTime @updatedAt
 
   @@map("configuracoes_loja")
@@ -463,4 +523,97 @@ model NotificacaoResumoDiario {
 
   @@unique([lojaId, data, canal])
   @@map("notificacoes_resumo_diario")
+}
+
+// ============================================================
+// CONCILIAÇÃO DE CARTÕES (Melhoria C)
+// ============================================================
+
+model ExtratoCartao {
+  id                String        @id @default(uuid())
+  lojaId            String
+  loja              Loja          @relation(fields: [lojaId], references: [id])
+  adquirente        String
+  nomeArquivo       String
+  hashArquivo       String
+  mapeamentoColunas Json?
+  status            StatusExtrato @default(PROCESSANDO)
+  totalLinhas       Int           @default(0)
+  totalImportadas   Int           @default(0)
+  erro              String?
+  importadoPorId    String
+  importadoPor      Usuario       @relation(fields: [importadoPorId], references: [id])
+  createdAt         DateTime      @default(now())
+
+  transacoes TransacaoExtratoCartao[]
+
+  @@unique([lojaId, hashArquivo])
+  @@map("extratos_cartao")
+}
+
+model TransacaoExtratoCartao {
+  id                    String            @id @default(uuid())
+  extratoId             String
+  extrato               ExtratoCartao     @relation(fields: [extratoId], references: [id])
+  lojaId                String
+  loja                  Loja              @relation(fields: [lojaId], references: [id])
+  nsu                   String?
+  autorizacao           String?
+  bandeira              Bandeira?
+  modalidade            ModalidadeCartao?
+  parcelas              Int               @default(1)
+  numeroParcela         Int               @default(1)
+  valorBruto            Decimal           @db.Decimal(12, 2)
+  valorLiquido          Decimal           @db.Decimal(12, 2)
+  valorTaxa             Decimal           @db.Decimal(12, 2)
+  dataVenda             DateTime
+  dataPagamentoPrevista DateTime
+  linhaOriginal         Json
+
+  usadaEmConciliacao Boolean            @default(false)
+  conciliacao        ConciliacaoCartao?
+
+  createdAt DateTime @default(now())
+
+  @@index([lojaId, dataVenda])
+  @@index([nsu])
+  @@index([lojaId, usadaEmConciliacao])
+  @@map("transacoes_extrato_cartao")
+}
+
+model ConciliacaoCartao {
+  id                 String                        @id @default(uuid())
+  lojaId             String
+  loja               Loja                          @relation(fields: [lojaId], references: [id])
+  movimentacaoId     String?                       @unique
+  movimentacao       MovimentacaoCaixa?            @relation(fields: [movimentacaoId], references: [id])
+  transacaoExtratoId String?                       @unique
+  transacaoExtrato   TransacaoExtratoCartao?       @relation(fields: [transacaoExtratoId], references: [id])
+  statusMovimentacao StatusConciliacaoMovimentacao @default(SEM_EXTRATO)
+  statusTransacao    StatusConciliacaoTransacao?
+  nivelConfianca     Int?
+  diferencaValor     Decimal?                      @db.Decimal(12, 2)
+  observacao         String?
+  resolvidoPorId     String?
+  resolvidoPor       Usuario?                      @relation(fields: [resolvidoPorId], references: [id])
+  resolvidoEm        DateTime?
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+
+  @@index([lojaId, statusMovimentacao])
+  @@map("conciliacoes_cartao")
+}
+
+model TaxaContratadaCartao {
+  id             String           @id @default(uuid())
+  lojaId         String
+  loja           Loja             @relation(fields: [lojaId], references: [id])
+  bandeira       Bandeira
+  modalidade     ModalidadeCartao
+  parcelas       Int              @default(1)
+  taxaPercentual Decimal          @db.Decimal(5, 2)
+  vigenteDesde   DateTime         @default(now())
+
+  @@unique([lojaId, bandeira, modalidade, parcelas, vigenteDesde])
+  @@map("taxas_contratadas_cartao")
 }

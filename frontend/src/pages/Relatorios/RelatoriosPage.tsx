@@ -6,11 +6,26 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { Table } from "@/components/ui/Table";
+import { Badge } from "@/components/ui/Badge";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
 import * as relatoriosApi from "@/api/relatorios.api";
 import { formatarBRL } from "@/utils/formatMoney";
 import { usePermissao } from "@/hooks/usePermissao";
 import { SecaoAuditoria } from "./components/SecaoAuditoria";
+import { SecaoVendasPorForma } from "./components/SecaoVendasPorForma";
+import { SecaoMovimentacoes } from "./components/SecaoMovimentacoes";
+import { SecaoEstornos } from "./components/SecaoEstornos";
+
+const ROTULO_TENDENCIA: Record<string, string> = {
+  MELHORANDO: "Melhorando",
+  PIORANDO: "Piorando",
+  ESTAVEL: "Estável",
+};
+const VARIANTE_TENDENCIA: Record<string, "success" | "danger" | "neutral"> = {
+  MELHORANDO: "success",
+  PIORANDO: "danger",
+  ESTAVEL: "neutral",
+};
 
 type AgruparPor = "operador" | "terminal" | "dia";
 
@@ -23,6 +38,7 @@ export function RelatoriosPage() {
   const [agruparPor, setAgruparPor] = useState<AgruparPor>("dia");
   const [comparativo, setComparativo] = useState<Awaited<ReturnType<typeof relatoriosApi.comparativo>>>([]);
   const [alertas, setAlertas] = useState<Awaited<ReturnType<typeof relatoriosApi.alertasDivergencia>>>([]);
+  const [divergenciaOperador, setDivergenciaOperador] = useState<relatoriosApi.DivergenciaPorOperador[]>([]);
   const [previsao, setPrevisao] = useState<Awaited<ReturnType<typeof relatoriosApi.previsaoCaixa>> | null>(null);
   const [dataInicioContabil, setDataInicioContabil] = useState("");
   const [dataFimContabil, setDataFimContabil] = useState("");
@@ -34,25 +50,34 @@ export function RelatoriosPage() {
 
   useEffect(() => {
     relatoriosApi.alertasDivergencia().then(setAlertas).catch(() => undefined);
+    relatoriosApi.divergenciaPorOperador({}).then(setDivergenciaOperador).catch(() => undefined);
     if (atende("GERENTE")) {
       relatoriosApi.previsaoCaixa().then(setPrevisao).catch(() => undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function exportarContabil() {
-    if (!dataInicioContabil || !dataFimContabil) {
-      notificar("Informe o período para exportar.", "erro");
-      return;
-    }
+  async function exportarDivergenciaOperador() {
     try {
-      await relatoriosApi.baixarExportacaoContabil(dataInicioContabil, dataFimContabil);
+      await relatoriosApi.baixarDivergenciaPorOperador();
     } catch (err) {
       notificar(mensagemDeErro(err), "erro");
     }
   }
 
-  async function baixarFechamento(formato: "pdf" | "xlsx") {
+  async function exportarContabil(formato: "xlsx" | "csv") {
+    if (!dataInicioContabil || !dataFimContabil) {
+      notificar("Informe o período para exportar.", "erro");
+      return;
+    }
+    try {
+      await relatoriosApi.baixarExportacaoContabil(dataInicioContabil, dataFimContabil, formato);
+    } catch (err) {
+      notificar(mensagemDeErro(err), "erro");
+    }
+  }
+
+  async function baixarFechamento(formato: "pdf" | "xlsx" | "csv") {
     if (!turnoIdRelatorio) return;
     try {
       await relatoriosApi.baixarRelatorioFechamento(turnoIdRelatorio, formato);
@@ -72,6 +97,9 @@ export function RelatoriosPage() {
             </Button>
             <Button variant="secondary" onClick={() => baixarFechamento("xlsx")}>
               Baixar Excel
+            </Button>
+            <Button variant="secondary" onClick={() => baixarFechamento("csv")}>
+              Baixar CSV
             </Button>
           </div>
         </Card>
@@ -119,6 +147,39 @@ export function RelatoriosPage() {
         />
       </Card>
 
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+          <span style={{ font: "var(--fx-heading-4)" }}>Divergência por operador</span>
+          {divergenciaOperador.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={exportarDivergenciaOperador}>
+              Exportar CSV
+            </Button>
+          )}
+        </div>
+        <Table
+          itens={divergenciaOperador}
+          chaveItem={(d) => d.operadorId}
+          vazio="Nenhum turno fechado no período."
+          colunas={[
+            { chave: "operador", cabecalho: "Operador", render: (d) => d.operadorNome },
+            { chave: "turnos", cabecalho: "Turnos", render: (d) => d.quantidadeTurnos },
+            { chave: "media", cabecalho: "Divergência média", render: (d) => formatarBRL(d.divergenciaMedia) },
+            { chave: "maxima", cabecalho: "Divergência máxima", render: (d) => formatarBRL(d.divergenciaMaxima) },
+            { chave: "falta", cabecalho: "Com falta", render: (d) => d.turnosComFalta },
+            { chave: "sobra", cabecalho: "Com sobra", render: (d) => d.turnosComSobra },
+            {
+              chave: "tendencia",
+              cabecalho: "Tendência",
+              render: (d) => <Badge variant={VARIANTE_TENDENCIA[d.tendencia]}>{ROTULO_TENDENCIA[d.tendencia]}</Badge>,
+            },
+          ]}
+        />
+      </Card>
+
+      <SecaoVendasPorForma />
+      <SecaoMovimentacoes />
+      <SecaoEstornos />
+
       <SecaoAuditoria />
 
       {atende("GERENTE") && (
@@ -147,7 +208,10 @@ export function RelatoriosPage() {
             <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
               <Input label="Data início" type="date" value={dataInicioContabil} onChange={(e) => setDataInicioContabil(e.target.value)} />
               <Input label="Data fim" type="date" value={dataFimContabil} onChange={(e) => setDataFimContabil(e.target.value)} />
-              <Button onClick={exportarContabil}>Exportar Excel</Button>
+              <Button onClick={() => exportarContabil("xlsx")}>Exportar Excel</Button>
+              <Button variant="secondary" onClick={() => exportarContabil("csv")}>
+                Exportar CSV
+              </Button>
             </div>
           </Card>
         </>

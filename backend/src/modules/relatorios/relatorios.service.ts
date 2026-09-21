@@ -1,6 +1,7 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type FormaPagamento, type TipoMovimentacao } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../middlewares/errorHandler";
+import { TODAS_FORMAS_PAGAMENTO } from "../turnos/saldoCaixa.util";
 
 export async function buscarFechamento(turnoId: string) {
   const relatorio = await prisma.relatorioFechamento.findUnique({ where: { turnoId } });
@@ -197,4 +198,192 @@ export async function alertasDivergenciaRecorrente(lojaId: string, minimoOcorren
       ocorrencias: dados.ocorrencias,
       divergenciaAcumulada: dados.divergenciaAcumulada.toFixed(2),
     }));
+}
+
+interface DivergenciaPorOperadorFiltros {
+  lojaId: string;
+  dataInicio?: Date;
+  dataFim?: Date;
+}
+
+/** Relatório completo (não só alerta): média, máximo e tendência de divergência por operador. */
+export async function divergenciaPorOperador(filtros: DivergenciaPorOperadorFiltros) {
+  const turnos = await prisma.turnoCaixa.findMany({
+    where: {
+      lojaId: filtros.lojaId,
+      status: "FECHADO",
+      dataFechamento: { gte: filtros.dataInicio, lte: filtros.dataFim },
+    },
+    include: {
+      operadorFechamento: { select: { id: true, nome: true } },
+      fechamento: { select: { classificacaoGeral: true, divergenciaTotal: true } },
+    },
+    orderBy: { dataFechamento: "asc" },
+  });
+
+  const porOperador = new Map<
+    string,
+    { nome: string; registros: { divergencia: Prisma.Decimal; classificacao: string | null }[] }
+  >();
+
+  for (const turno of turnos) {
+    if (!turno.operadorFechamento || !turno.fechamento) continue;
+    const atual = porOperador.get(turno.operadorFechamento.id) ?? {
+      nome: turno.operadorFechamento.nome,
+      registros: [],
+    };
+    atual.registros.push({
+      divergencia: turno.fechamento.divergenciaTotal ?? new Prisma.Decimal(0),
+      classificacao: turno.fechamento.classificacaoGeral,
+    });
+    porOperador.set(turno.operadorFechamento.id, atual);
+  }
+
+  function mediaAbsoluta(registros: { divergencia: Prisma.Decimal }[]): Prisma.Decimal {
+    if (registros.length === 0) return new Prisma.Decimal(0);
+    const soma = registros.reduce((acc, r) => acc.plus(r.divergencia.abs()), new Prisma.Decimal(0));
+    return soma.div(registros.length);
+  }
+
+  return Array.from(porOperador.entries())
+    .map(([operadorId, dados]) => {
+      const absolutos = dados.registros.map((r) => r.divergencia.abs());
+      const maxima = absolutos.reduce((max, v) => (v.greaterThan(max) ? v : max), new Prisma.Decimal(0));
+
+      // Tendência: compara a média de divergência da primeira metade cronológica
+      // dos turnos com a segunda metade — só opina com pelo menos 4 turnos.
+      const meio = Math.floor(dados.registros.length / 2);
+      const mediaPrimeira = mediaAbsoluta(dados.registros.slice(0, meio));
+      const mediaSegunda = mediaAbsoluta(dados.registros.slice(meio));
+      let tendencia: "MELHORANDO" | "PIORANDO" | "ESTAVEL" = "ESTAVEL";
+      if (dados.registros.length >= 4) {
+        if (mediaSegunda.lessThan(mediaPrimeira.times(0.8))) tendencia = "MELHORANDO";
+        else if (mediaSegunda.greaterThan(mediaPrimeira.times(1.2))) tendencia = "PIORANDO";
+      }
+
+      return {
+        operadorId,
+        operadorNome: dados.nome,
+        quantidadeTurnos: dados.registros.length,
+        divergenciaMedia: mediaAbsoluta(dados.registros).toFixed(2),
+        divergenciaMaxima: maxima.toFixed(2),
+        turnosComFalta: dados.registros.filter((r) => r.classificacao === "FALTA").length,
+        turnosComSobra: dados.registros.filter((r) => r.classificacao === "SOBRA").length,
+        tendencia,
+      };
+    })
+    .sort((a, b) => Number(b.divergenciaMedia) - Number(a.divergenciaMedia));
+}
+
+interface VendasPorFormaPeriodoFiltros {
+  lojaId: string;
+  dataInicio: Date;
+  dataFim: Date;
+  agrupamento: "hora" | "dia";
+  terminalId?: string;
+}
+
+function chaveHora(data: Date): string {
+  return `${data.toISOString().slice(0, 13)}:00`;
+}
+
+function chaveDia(data: Date): string {
+  return data.toISOString().slice(0, 10);
+}
+
+/** Vendas por forma de pagamento, agrupadas por hora ou por dia. */
+export async function vendasPorFormaPeriodo(filtros: VendasPorFormaPeriodoFiltros) {
+  const vendas = await prisma.movimentacaoCaixa.findMany({
+    where: {
+      tipo: "VENDA",
+      status: "ATIVA",
+      turno: { lojaId: filtros.lojaId, terminalId: filtros.terminalId },
+      createdAt: { gte: filtros.dataInicio, lte: filtros.dataFim },
+    },
+    select: { valor: true, formaPagamento: true, createdAt: true },
+  });
+
+  const grupos = new Map<
+    string,
+    { chave: string; porForma: Record<FormaPagamento, Prisma.Decimal>; total: Prisma.Decimal; quantidade: number }
+  >();
+
+  for (const venda of vendas) {
+    const chave = filtros.agrupamento === "hora" ? chaveHora(venda.createdAt) : chaveDia(venda.createdAt);
+    const atual = grupos.get(chave) ?? {
+      chave,
+      porForma: Object.fromEntries(TODAS_FORMAS_PAGAMENTO.map((f) => [f, new Prisma.Decimal(0)])) as Record<
+        FormaPagamento,
+        Prisma.Decimal
+      >,
+      total: new Prisma.Decimal(0),
+      quantidade: 0,
+    };
+    const forma = venda.formaPagamento ?? "OUTRO";
+    atual.porForma[forma] = atual.porForma[forma].plus(venda.valor);
+    atual.total = atual.total.plus(venda.valor);
+    atual.quantidade += 1;
+    grupos.set(chave, atual);
+  }
+
+  return Array.from(grupos.values())
+    .sort((a, b) => a.chave.localeCompare(b.chave))
+    .map((g) => ({
+      periodo: g.chave,
+      total: g.total.toFixed(2),
+      quantidade: g.quantidade,
+      porForma: Object.fromEntries(Object.entries(g.porForma).map(([f, v]) => [f, v.toFixed(2)])),
+    }));
+}
+
+interface MovimentacoesFiltradasInput {
+  lojaId: string;
+  dataInicio?: Date;
+  dataFim?: Date;
+  terminalId?: string;
+  operadorId?: string;
+  formaPagamento?: FormaPagamento;
+  tipo?: TipoMovimentacao;
+}
+
+/** Movimentações (sangria/suprimento etc.) filtráveis por período/caixa/operador/forma, sem depender de 1 turno. */
+export async function movimentacoesFiltradas(filtros: MovimentacoesFiltradasInput) {
+  return prisma.movimentacaoCaixa.findMany({
+    where: {
+      turno: { lojaId: filtros.lojaId, terminalId: filtros.terminalId },
+      operadorId: filtros.operadorId,
+      formaPagamento: filtros.formaPagamento,
+      tipo: filtros.tipo,
+      createdAt: { gte: filtros.dataInicio, lte: filtros.dataFim },
+    },
+    include: {
+      operador: { select: { id: true, nome: true } },
+      autorizadoPor: { select: { id: true, nome: true } },
+      turno: { select: { numeroSequencial: true, terminal: { select: { nome: true } } } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+interface EstornosFiltros {
+  lojaId: string;
+  dataInicio?: Date;
+  dataFim?: Date;
+  terminalId?: string;
+}
+
+/** Cancelamentos/devoluções: quem, quando, motivo, valor — sempre vinculados à venda original. */
+export async function estornos(filtros: EstornosFiltros) {
+  return prisma.movimentacaoCaixa.findMany({
+    where: {
+      tipo: { in: ["CANCELAMENTO", "DEVOLUCAO"] },
+      turno: { lojaId: filtros.lojaId, terminalId: filtros.terminalId },
+      createdAt: { gte: filtros.dataInicio, lte: filtros.dataFim },
+    },
+    include: {
+      operador: { select: { id: true, nome: true } },
+      vendaReferencia: { select: { id: true, valor: true, formaPagamento: true, createdAt: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
 }

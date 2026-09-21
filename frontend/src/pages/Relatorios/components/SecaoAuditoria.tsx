@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
+import { Button } from "@/components/ui/Button";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
 import * as auditoriaApi from "@/api/auditoria.api";
+import * as relatoriosApi from "@/api/relatorios.api";
 import type { RegistroAuditoria } from "@/api/auditoria.api";
 import { formatarDataHora } from "@/utils/formatDate";
 
@@ -25,6 +27,11 @@ const ROTULO_ACAO: Record<string, string> = {
   FECHAMENTO_AUTOMATICO_ALERTA: "Alerta de fechamento não realizado",
   FECHAMENTO_AUTOMATICO_FORCADO: "Fechamento automático forçado",
   EXPORTACAO_RELATORIO: "Exportação de relatório",
+  USUARIO_CRIADO: "Usuário criado",
+  USUARIO_ATUALIZADO: "Usuário atualizado",
+  IMPORTACAO_EXTRATO_CARTAO: "Importação de extrato de cartão",
+  CONCILIACAO_EXECUTADA: "Conciliação de cartões executada",
+  CONCILIACAO_RESOLVIDA_MANUAL: "Conciliação de cartão resolvida manualmente",
 };
 
 export function SecaoAuditoria() {
@@ -44,10 +51,21 @@ export function SecaoAuditoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagina]);
 
+  async function exportar() {
+    try {
+      await relatoriosApi.baixarAuditoriaCsv();
+    } catch (err) {
+      notificar(mensagemDeErro(err), "erro");
+    }
+  }
+
   return (
     <Card>
-      <div style={{ font: "var(--fx-heading-4)", marginBottom: 12 }}>
-        Log de auditoria (imutável) — {total} registro(s)
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+        <span style={{ font: "var(--fx-heading-4)" }}>Log de auditoria (imutável) — {total} registro(s)</span>
+        <Button variant="secondary" size="sm" onClick={exportar}>
+          Exportar CSV
+        </Button>
       </div>
       <Table
         itens={registros}
