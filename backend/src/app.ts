@@ -18,12 +18,16 @@ import { relatoriosRoutes } from "./modules/relatorios/relatorios.routes";
 import { auditoriaRoutes } from "./modules/auditoria/auditoria.routes";
 import { configuracoesRoutes } from "./modules/configuracoes/configuracoes.routes";
 import { dashboardRoutes } from "./modules/dashboard/dashboard.routes";
+import { conciliacaoRoutes } from "./modules/conciliacao/conciliacao.routes";
 
 export const app = express();
 
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
-app.use(express.json());
+// Limite elevado (padrão é 100kb) para caber o upload de extratos de cartão em
+// base64 no corpo JSON (POST /conciliacao/extratos) — os demais endpoints
+// continuam com corpos pequenos, então isso não amplia o risco na prática.
+app.use(express.json({ limit: "15mb" }));
 app.use(cookieParser());
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
@@ -40,6 +44,7 @@ app.use("/api/relatorios", relatoriosRoutes);
 app.use("/api/auditoria", auditoriaRoutes);
 app.use("/api/configuracoes", configuracoesRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/conciliacao", conciliacaoRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

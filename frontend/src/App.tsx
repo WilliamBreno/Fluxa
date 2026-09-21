@@ -9,6 +9,7 @@ import { LeituraXPage } from "@/pages/LeituraX/LeituraXPage";
 import { DashboardPage } from "@/pages/Dashboard/DashboardPage";
 import { RelatoriosPage } from "@/pages/Relatorios/RelatoriosPage";
 import { ConfiguracoesPage } from "@/pages/Configuracoes/ConfiguracoesPage";
+import { ConciliacaoPage } from "@/pages/Conciliacao/ConciliacaoPage";
 
 export default function App() {
   return (
@@ -68,6 +69,14 @@ export default function App() {
         element={
           <RotaProtegida minimo="SUPERVISOR">
             <RelatoriosPage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/conciliacao"
+        element={
+          <RotaProtegida minimo="SUPERVISOR">
+            <ConciliacaoPage />
           </RotaProtegida>
         }
       />

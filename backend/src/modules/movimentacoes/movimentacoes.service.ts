@@ -139,6 +139,15 @@ export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx:
           payloadResposta: resultadoPagamento as unknown as Prisma.InputJsonValue,
         },
       });
+
+      // NSU indexado diretamente na movimentação — o motor de conciliação de
+      // cartões (nível 1: NSU + valor) não precisa vasculhar o Json acima.
+      if (resultadoPagamento.nsu) {
+        await prisma.movimentacaoCaixa.update({
+          where: { id: movimentacao.id },
+          data: { nsuMaquininha: resultadoPagamento.nsu },
+        });
+      }
     }
   }
 
