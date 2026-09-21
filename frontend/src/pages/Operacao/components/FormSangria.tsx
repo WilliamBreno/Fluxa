@@ -3,7 +3,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
-import * as movimentacoesApi from "@/api/movimentacoes.api";
+import { useOfflineQueue } from "@/offline/useOfflineQueue";
 
 interface FormSangriaProps {
   aberto: boolean;
@@ -14,6 +14,7 @@ interface FormSangriaProps {
 
 export function FormSangria({ aberto, turnoId, onFechar, onSucesso }: FormSangriaProps) {
   const { notificar } = useToast();
+  const { enviarMovimentacao } = useOfflineQueue();
   const [valor, setValor] = useState("");
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -22,12 +23,15 @@ export function FormSangria({ aberto, turnoId, onFechar, onSucesso }: FormSangri
     e.preventDefault();
     setEnviando(true);
     try {
-      await movimentacoesApi.criarMovimentacao(turnoId, {
+      const resultado = await enviarMovimentacao(turnoId, {
         tipo: "SANGRIA",
         valor: Number(valor.replace(",", ".")),
         motivo,
       });
-      notificar("Sangria registrada.", "sucesso");
+      notificar(
+        resultado.offline ? "Sem conexão: sangria salva no dispositivo e será enviada automaticamente." : "Sangria registrada.",
+        resultado.offline ? "info" : "sucesso"
+      );
       setValor("");
       setMotivo("");
       onSucesso();

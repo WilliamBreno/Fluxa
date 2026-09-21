@@ -9,6 +9,10 @@ export const criarMovimentacaoSchema = z
     motivo: z.string().max(300).optional(),
     descricao: z.string().max(300).optional(),
     vendaReferenciaId: z.string().uuid().optional(),
+    // Gerada no cliente (fila offline) antes de qualquer tentativa de rede —
+    // reenviar a mesma operação (retry de rede, ou volta de uma sessão
+    // expirada) nunca duplica o lançamento. Ver movimentacoes.service.ts::criar.
+    chaveIdempotencia: z.string().uuid().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.tipo === "VENDA" && !data.formaPagamento) {

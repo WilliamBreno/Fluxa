@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/components/ui/Toast";
+import { OfflineProvider } from "@/offline/OfflineProvider";
 import "@/styles/base.css";
 import "@/styles/components.css";
 
@@ -12,7 +13,9 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
-          <App />
+          <OfflineProvider>
+            <App />
+          </OfflineProvider>
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>

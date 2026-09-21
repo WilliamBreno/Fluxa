@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
 import * as movimentacoesApi from "@/api/movimentacoes.api";
 import type { Movimentacao } from "@/api/movimentacoes.api";
+import { useOfflineQueue } from "@/offline/useOfflineQueue";
 import { formatarBRL } from "@/utils/formatMoney";
 import { formatarDataHora } from "@/utils/formatDate";
 
@@ -18,6 +19,7 @@ interface FormCancelamentoProps {
 
 export function FormCancelamento({ aberto, turnoId, onFechar, onSucesso }: FormCancelamentoProps) {
   const { notificar } = useToast();
+  const { enviarMovimentacao } = useOfflineQueue();
   const [vendas, setVendas] = useState<Movimentacao[]>([]);
   const [vendaSelecionadaId, setVendaSelecionadaId] = useState("");
   const [tipo, setTipo] = useState<"CANCELAMENTO" | "DEVOLUCAO">("CANCELAMENTO");
@@ -41,13 +43,17 @@ export function FormCancelamento({ aberto, turnoId, onFechar, onSucesso }: FormC
     if (!vendaSelecionada) return;
     setEnviando(true);
     try {
-      await movimentacoesApi.criarMovimentacao(turnoId, {
+      const resultado = await enviarMovimentacao(turnoId, {
         tipo,
         valor: Number(valor.replace(",", ".")),
         motivo,
         vendaReferenciaId: vendaSelecionada.id,
       });
-      notificar(`${tipo === "CANCELAMENTO" ? "Cancelamento" : "Devolução"} registrado(a).`, "sucesso");
+      const rotulo = tipo === "CANCELAMENTO" ? "Cancelamento" : "Devolução";
+      notificar(
+        resultado.offline ? `Sem conexão: ${rotulo.toLowerCase()} salvo(a) no dispositivo e será enviado(a) automaticamente.` : `${rotulo} registrado(a).`,
+        resultado.offline ? "info" : "sucesso"
+      );
       setValor("");
       setMotivo("");
       onSucesso();

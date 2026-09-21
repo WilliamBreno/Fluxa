@@ -3,7 +3,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
-import * as movimentacoesApi from "@/api/movimentacoes.api";
+import { useOfflineQueue } from "@/offline/useOfflineQueue";
 
 interface FormSuprimentoProps {
   aberto: boolean;
@@ -14,6 +14,7 @@ interface FormSuprimentoProps {
 
 export function FormSuprimento({ aberto, turnoId, onFechar, onSucesso }: FormSuprimentoProps) {
   const { notificar } = useToast();
+  const { enviarMovimentacao } = useOfflineQueue();
   const [valor, setValor] = useState("");
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -22,12 +23,17 @@ export function FormSuprimento({ aberto, turnoId, onFechar, onSucesso }: FormSup
     e.preventDefault();
     setEnviando(true);
     try {
-      await movimentacoesApi.criarMovimentacao(turnoId, {
+      const resultado = await enviarMovimentacao(turnoId, {
         tipo: "SUPRIMENTO",
         valor: Number(valor.replace(",", ".")),
         motivo,
       });
-      notificar("Suprimento registrado.", "sucesso");
+      notificar(
+        resultado.offline
+          ? "Sem conexão: suprimento salvo no dispositivo e será enviado automaticamente."
+          : "Suprimento registrado.",
+        resultado.offline ? "info" : "sucesso"
+      );
       setValor("");
       setMotivo("");
       onSucesso();

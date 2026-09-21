@@ -4,7 +4,7 @@ import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
-import * as movimentacoesApi from "@/api/movimentacoes.api";
+import { useOfflineQueue } from "@/offline/useOfflineQueue";
 import type { FormaPagamento } from "@/api/turnos.api";
 
 const OPCOES_FORMA: { value: FormaPagamento; label: string }[] = [
@@ -26,6 +26,7 @@ interface FormVendaProps {
 
 export function FormVenda({ aberto, turnoId, onFechar, onSucesso }: FormVendaProps) {
   const { notificar } = useToast();
+  const { enviarMovimentacao } = useOfflineQueue();
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>("DINHEIRO");
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -41,13 +42,16 @@ export function FormVenda({ aberto, turnoId, onFechar, onSucesso }: FormVendaPro
     e.preventDefault();
     setEnviando(true);
     try {
-      await movimentacoesApi.criarMovimentacao(turnoId, {
+      const resultado = await enviarMovimentacao(turnoId, {
         tipo: "VENDA",
         formaPagamento,
         valor: Number(valor.replace(",", ".")),
         descricao: descricao || undefined,
       });
-      notificar("Venda registrada.", "sucesso");
+      notificar(
+        resultado.offline ? "Sem conexão: venda salva no dispositivo e será enviada automaticamente." : "Venda registrada.",
+        resultado.offline ? "info" : "sucesso"
+      );
       limpar();
       onSucesso();
       onFechar();

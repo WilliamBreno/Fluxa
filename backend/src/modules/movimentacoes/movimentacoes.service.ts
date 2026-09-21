@@ -22,6 +22,8 @@ interface CriarMovimentacaoInput {
   motivo?: string;
   descricao?: string;
   vendaReferenciaId?: string;
+  /** Gerada no cliente (fila offline) — reenviar a mesma chave nunca duplica o lançamento. */
+  chaveIdempotencia?: string;
 }
 
 const ACAO_AUDITORIA_POR_TIPO = {
@@ -34,6 +36,19 @@ const ACAO_AUDITORIA_POR_TIPO = {
 } as const;
 
 export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx: ContextoRequisicao) {
+  // Replay idempotente: se essa chave já gerou uma movimentação antes (rede
+  // caiu depois do servidor confirmar, e a fila offline reenviou), devolve o
+  // registro existente sem repetir efeitos colaterais (fiscal, maquininha,
+  // auditoria, alerta de teto). Precisa vir antes de qualquer outra
+  // validação — um reenvio nunca deve falhar por o turno ter fechado
+  // enquanto o cliente estava offline esperando confirmação.
+  if (input.chaveIdempotencia) {
+    const existente = await prisma.movimentacaoCaixa.findUnique({
+      where: { chaveIdempotencia: input.chaveIdempotencia },
+    });
+    if (existente) return existente;
+  }
+
   const turno = await prisma.turnoCaixa.findUnique({
     where: { id: turnoId },
     include: { loja: { include: { configuracao: true } } },
@@ -80,30 +95,45 @@ export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx:
     (input.tipo === "SANGRIA" || input.tipo === "SUPRIMENTO") &&
     new Prisma.Decimal(input.valor).greaterThanOrEqualTo(valorMinimoConferencia);
 
-  const movimentacao = await prisma.$transaction(async (tx) => {
-    const criada = await tx.movimentacaoCaixa.create({
-      data: {
-        turnoId,
-        tipo: input.tipo,
-        formaPagamento,
-        valor: input.valor,
-        motivo: input.motivo,
-        descricao: input.descricao,
-        vendaReferenciaId: input.vendaReferenciaId,
-        operadorId: ctx.usuarioId,
-        status: exigeConferenciaCruzada ? "PENDENTE_CONFERENCIA" : "ATIVA",
-      },
-    });
-
-    if (vendaReferencia) {
-      await tx.movimentacaoCaixa.update({
-        where: { id: vendaReferencia.id },
-        data: { status: "ESTORNADA", motivoEstorno: input.motivo, estornadaEm: new Date() },
+  let movimentacao: MovimentacaoCaixa;
+  try {
+    movimentacao = await prisma.$transaction(async (tx) => {
+      const criada = await tx.movimentacaoCaixa.create({
+        data: {
+          turnoId,
+          tipo: input.tipo,
+          formaPagamento,
+          valor: input.valor,
+          motivo: input.motivo,
+          descricao: input.descricao,
+          vendaReferenciaId: input.vendaReferenciaId,
+          operadorId: ctx.usuarioId,
+          status: exigeConferenciaCruzada ? "PENDENTE_CONFERENCIA" : "ATIVA",
+          chaveIdempotencia: input.chaveIdempotencia,
+        },
       });
-    }
 
-    return criada;
-  });
+      if (vendaReferencia) {
+        await tx.movimentacaoCaixa.update({
+          where: { id: vendaReferencia.id },
+          data: { status: "ESTORNADA", motivoEstorno: input.motivo, estornadaEm: new Date() },
+        });
+      }
+
+      return criada;
+    });
+  } catch (err) {
+    // Corrida entre duas tentativas simultâneas com a mesma chave (ex.: duas
+    // abas, ou a fila offline reenviando antes de receber a 1ª confirmação):
+    // quem perdeu a corrida apenas devolve o que a outra já criou.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002" && input.chaveIdempotencia) {
+      const existente = await prisma.movimentacaoCaixa.findUnique({
+        where: { chaveIdempotencia: input.chaveIdempotencia },
+      });
+      if (existente) return existente;
+    }
+    throw err;
+  }
 
   // Integrações (stub nesta v1): emissão fiscal para toda venda, conciliação
   // de maquininha para débito/crédito. Nunca bloqueiam a venda em si.

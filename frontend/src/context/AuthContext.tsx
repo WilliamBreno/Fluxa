@@ -2,6 +2,7 @@ import { createContext, useCallback, useEffect, useMemo, useState, type ReactNod
 import * as authApi from "@/api/auth.api";
 import { setAccessToken, setLojaAtual, getLojaAtual } from "@/api/client";
 import { conectarSocket, desconectarSocket } from "@/sockets/socketClient";
+import * as offlineSync from "@/offline/sync";
 import type { UsuarioLogado } from "@/api/auth.api";
 
 interface AuthContextValue {
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const usuarioAtual = await authApi.me();
         setUsuario(usuarioAtual);
         conectarSocket(accessToken);
+        offlineSync.retomar();
       })
       .catch(() => {
         setAccessToken(null);
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLojaId(primeiraLoja);
     }
     conectarSocket(resultado.accessToken);
+    offlineSync.retomar();
   }, []);
 
   const sair = useCallback(async () => {

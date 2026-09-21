@@ -4,6 +4,7 @@ import { Bell, CircleUserRound, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocketEvent } from "@/hooks/useSocketEvent";
 import { Button } from "@/components/ui/Button";
+import { StatusOffline } from "./StatusOffline";
 
 interface TopBarProps {
   titulo: string;
@@ -46,6 +47,8 @@ export function TopBar({ titulo, onAbrirMenu }: TopBarProps) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <StatusOffline />
+
         <button
           onClick={() => setAlertasNaoLidos(0)}
           aria-label={alertasNaoLidos > 0 ? `${alertasNaoLidos} alertas não lidos` : "Sem alertas novos"}

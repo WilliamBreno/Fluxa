@@ -463,6 +463,18 @@
   }
 }
 
+.fx-spin {
+  animation: fx-spin 1s linear infinite;
+}
+@keyframes fx-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* iOS aplica zoom automático ao focar em inputs com font-size < 16px. */
 @media (max-width: 640px) {
   .fx-input,
