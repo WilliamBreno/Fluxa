@@ -1,6 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { RotaProtegida } from "@/components/RotaProtegida";
 import { LoginPage } from "@/pages/Login/LoginPage";
+import { CadastroPage } from "@/pages/Cadastro/CadastroPage";
+import { PlanosPage } from "@/pages/Planos/PlanosPage";
+import { PlanosAdminPage } from "@/pages/Planos/PlanosAdminPage";
+import { AssinaturaPendentePage } from "@/pages/Assinatura/AssinaturaPendentePage";
+import { AssinaturaSimularPage } from "@/pages/Assinatura/AssinaturaSimularPage";
+import { AssinaturaConfirmadoPage } from "@/pages/Assinatura/AssinaturaConfirmadoPage";
 import { TerminaisPage } from "@/pages/Terminais/TerminaisPage";
 import { AberturaCaixaPage } from "@/pages/Abertura/AberturaCaixaPage";
 import { OperacaoCaixaPage } from "@/pages/Operacao/OperacaoCaixaPage";
@@ -15,6 +21,48 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/cadastro" element={<CadastroPage />} />
+
+      <Route
+        path="/planos"
+        element={
+          <RotaProtegida>
+            <PlanosPage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/assinatura"
+        element={
+          <RotaProtegida>
+            <AssinaturaPendentePage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/assinatura/simular"
+        element={
+          <RotaProtegida>
+            <AssinaturaSimularPage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/assinatura/confirmado"
+        element={
+          <RotaProtegida>
+            <AssinaturaConfirmadoPage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/admin/planos"
+        element={
+          <RotaProtegida somenteSuperAdmin>
+            <PlanosAdminPage />
+          </RotaProtegida>
+        }
+      />
 
       <Route
         path="/terminais"

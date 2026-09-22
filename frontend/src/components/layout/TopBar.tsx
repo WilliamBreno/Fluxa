@@ -1,10 +1,9 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, CircleUserRound, LogOut, Menu } from "lucide-react";
+import { CircleUserRound, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSocketEvent } from "@/hooks/useSocketEvent";
 import { Button } from "@/components/ui/Button";
 import { StatusOffline } from "./StatusOffline";
+import { NotificacoesBell } from "./NotificacoesBell";
 
 interface TopBarProps {
   titulo: string;
@@ -14,12 +13,6 @@ interface TopBarProps {
 export function TopBar({ titulo, onAbrirMenu }: TopBarProps) {
   const { usuario, papelAtual, sair } = useAuth();
   const navigate = useNavigate();
-  const [alertasNaoLidos, setAlertasNaoLidos] = useState(0);
-
-  // Contador real de alertas recebidos ao vivo nesta sessão (teto de gaveta,
-  // fechamento não realizado) — nunca um número fixo/decorativo.
-  useSocketEvent("alerta:tetoGaveta", () => setAlertasNaoLidos((n) => n + 1));
-  useSocketEvent("alerta:fechamentoNaoRealizado", () => setAlertasNaoLidos((n) => n + 1));
 
   async function handleSair() {
     await sair();
@@ -48,40 +41,7 @@ export function TopBar({ titulo, onAbrirMenu }: TopBarProps) {
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <StatusOffline />
-
-        <button
-          onClick={() => setAlertasNaoLidos(0)}
-          aria-label={alertasNaoLidos > 0 ? `${alertasNaoLidos} alertas não lidos` : "Sem alertas novos"}
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 32,
-            height: 32,
-            flexShrink: 0,
-            border: "none",
-            borderRadius: "var(--fx-radius-control)",
-            background: "transparent",
-            color: "var(--fx-text-secondary)",
-            cursor: "pointer",
-          }}
-        >
-          <Bell size={18} strokeWidth={2} />
-          {alertasNaoLidos > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 4,
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "var(--fx-color-danger)",
-              }}
-            />
-          )}
-        </button>
+        <NotificacoesBell />
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <CircleUserRound size={28} strokeWidth={1.5} color="var(--fx-text-tertiary)" aria-hidden style={{ flexShrink: 0 }} />

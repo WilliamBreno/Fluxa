@@ -6,9 +6,10 @@ import { usePermissao } from "@/hooks/usePermissao";
 interface RotaProtegidaProps {
   children: ReactNode;
   minimo?: "OPERADOR" | "SUPERVISOR" | "GERENTE" | "ADMIN";
+  somenteSuperAdmin?: boolean;
 }
 
-export function RotaProtegida({ children, minimo }: RotaProtegidaProps) {
+export function RotaProtegida({ children, minimo, somenteSuperAdmin }: RotaProtegidaProps) {
   const { usuario, carregando } = useAuth();
   const { atende } = usePermissao();
 
@@ -21,6 +22,7 @@ export function RotaProtegida({ children, minimo }: RotaProtegidaProps) {
   }
 
   if (!usuario) return <Navigate to="/login" replace />;
+  if (somenteSuperAdmin && !usuario.superAdmin) return <Navigate to="/terminais" replace />;
   if (minimo && !atende(minimo)) return <Navigate to="/terminais" replace />;
 
   return <>{children}</>;

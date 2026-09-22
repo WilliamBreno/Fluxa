@@ -10,6 +10,8 @@ interface AuthContextValue {
   lojaId: string | null;
   carregando: boolean;
   entrar: (email: string, senha: string) => Promise<void>;
+  /** Usado pelo cadastro público: a conta já vem com sessão emitida, sem precisar de um segundo login. */
+  aplicarSessao: (usuario: UsuarioLogado, accessToken: string, lojaId: string) => void;
   sair: () => Promise<void>;
   selecionarLoja: (lojaId: string) => void;
   papelAtual: "OPERADOR" | "SUPERVISOR" | "GERENTE" | "ADMIN" | null;
@@ -52,6 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     offlineSync.retomar();
   }, []);
 
+  const aplicarSessao = useCallback((novoUsuario: UsuarioLogado, accessToken: string, novaLojaId: string) => {
+    setAccessToken(accessToken);
+    setUsuario(novoUsuario);
+    setLojaAtual(novaLojaId);
+    setLojaId(novaLojaId);
+    conectarSocket(accessToken);
+    offlineSync.retomar();
+  }, []);
+
   const sair = useCallback(async () => {
     await authApi.logout().catch(() => undefined);
     setAccessToken(null);
@@ -71,7 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [usuario, lojaId]);
 
   return (
-    <AuthContext.Provider value={{ usuario, lojaId, carregando, entrar, sair, selecionarLoja, papelAtual }}>
+    <AuthContext.Provider
+      value={{ usuario, lojaId, carregando, entrar, aplicarSessao, sair, selecionarLoja, papelAtual }}
+    >
       {children}
     </AuthContext.Provider>
   );

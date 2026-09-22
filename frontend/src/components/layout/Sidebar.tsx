@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
-import { ChartPie, CreditCard, LayoutDashboard, Settings, Store, Wallet, X, type LucideIcon } from "lucide-react";
+import { ChartPie, CreditCard, LayoutDashboard, Settings, Store, Tag, Wallet, X, type LucideIcon } from "lucide-react";
 import { usePermissao } from "@/hooks/usePermissao";
+import { useAuth } from "@/hooks/useAuth";
 
 type ItemNav =
   | { secao: string }
@@ -9,6 +10,7 @@ type ItemNav =
       label: string;
       Icone: LucideIcon;
       minimo?: "OPERADOR" | "SUPERVISOR" | "GERENTE" | "ADMIN";
+      somenteSuperAdmin?: boolean;
     };
 
 const ITENS: ItemNav[] = [
@@ -19,6 +21,7 @@ const ITENS: ItemNav[] = [
   { to: "/conciliacao", label: "Conciliação de cartões", Icone: CreditCard, minimo: "SUPERVISOR" },
   { secao: "Sistema" },
   { to: "/configuracoes", label: "Configurações", Icone: Settings, minimo: "GERENTE" },
+  { to: "/admin/planos", label: "Planos (Fluxa)", Icone: Tag, somenteSuperAdmin: true },
 ];
 
 interface SidebarProps {
@@ -28,6 +31,7 @@ interface SidebarProps {
 
 export function Sidebar({ aberta, onFechar }: SidebarProps) {
   const { atende } = usePermissao();
+  const { usuario } = useAuth();
 
   return (
     <>
@@ -79,7 +83,7 @@ export function Sidebar({ aberta, onFechar }: SidebarProps) {
               >
                 {item.secao}
               </div>
-            ) : item.minimo && !atende(item.minimo) ? null : (
+            ) : item.somenteSuperAdmin && !usuario?.superAdmin ? null : item.minimo && !atende(item.minimo) ? null : (
               <NavLink
                 key={item.to}
                 to={item.to}

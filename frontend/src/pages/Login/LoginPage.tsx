@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -75,6 +75,10 @@ export function LoginPage() {
             {enviando ? "Entrando…" : "Entrar"}
           </Button>
         </form>
+
+        <div style={{ textAlign: "center", marginTop: 16, font: "var(--fx-body-sm)" }}>
+          Não tem conta? <Link to="/cadastro">Criar conta grátis</Link>
+        </div>
       </Card>
     </div>
   );
