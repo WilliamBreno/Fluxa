@@ -7,6 +7,7 @@ import { proximoNumeroSequencial } from "../../utils/contador.util";
 import { emitirParaLoja } from "../../lib/socket";
 import { SOCKET_EVENTS } from "../../sockets/events";
 import * as auditoriaService from "../auditoria/auditoria.service";
+import * as notificacoesService from "../notificacoes/notificacoes.service";
 import { calcularResumoSaldoTurno, TODAS_FORMAS_PAGAMENTO } from "../turnos/saldoCaixa.util";
 
 interface ContextoRequisicao {
@@ -294,6 +295,18 @@ export async function confirmar(turnoId: string, input: ConfirmarInput, ctx: Con
     turnoId,
     relatorioId: resultado.relatorio.id,
   });
+
+  if (divergenciaTotal.abs().greaterThan(tolerancia)) {
+    await notificacoesService.criar({
+      lojaId: turno.lojaId,
+      tipo: "DIVERGENCIA_ACIMA_TOLERANCIA",
+      severidade: divergenciaTotal.abs().greaterThan(tolerancia.times(2)) ? "URGENTE" : "ATENCAO",
+      titulo: "Divergência de caixa acima da tolerância",
+      mensagem: `O fechamento do terminal ${turno.terminal.nome} teve divergência de R$ ${divergenciaTotal.toFixed(2)} (tolerância: R$ ${tolerancia.toFixed(2)}). Causa informada: ${input.causaDivergencia ?? "não informada"}.`,
+      entidade: "FechamentoCaixa",
+      entidadeId: fechamento.id,
+    });
+  }
 
   return resultado;
 }

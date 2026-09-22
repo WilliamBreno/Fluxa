@@ -22,6 +22,7 @@ import { conciliacaoRoutes } from "./modules/conciliacao/conciliacao.routes";
 import { cadastroRoutes } from "./modules/cadastro/cadastro.routes";
 import { planosRoutes } from "./modules/planos/planos.routes";
 import { assinaturaRoutes } from "./modules/assinatura/assinatura.routes";
+import { notificacoesRoutes } from "./modules/notificacoes/notificacoes.routes";
 
 export const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/conciliacao", conciliacaoRoutes);
 app.use("/api/cadastro", cadastroRoutes);
 app.use("/api/planos", planosRoutes);
 app.use("/api/assinatura", assinaturaRoutes);
+app.use("/api/notificacoes", notificacoesRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

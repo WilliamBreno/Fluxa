@@ -5,6 +5,7 @@ import { emitirParaLoja } from "../lib/socket";
 import { SOCKET_EVENTS } from "../sockets/events";
 import { logger } from "../lib/logger";
 import * as auditoriaService from "../modules/auditoria/auditoria.service";
+import * as notificacoesService from "../modules/notificacoes/notificacoes.service";
 import { getNotificacaoAdapter } from "../modules/integracoes/integracoes.factory";
 import { calcularResumoSaldoTurno, TODAS_FORMAS_PAGAMENTO } from "../modules/turnos/saldoCaixa.util";
 import { proximoNumeroSequencial } from "../utils/contador.util";
@@ -52,6 +53,15 @@ export function registrarJobFechamentoAutomatico() {
           emitirParaLoja(loja.id, SOCKET_EVENTS.ALERTA_FECHAMENTO_NAO_REALIZADO, {
             turnoId: turno.id,
             terminalNome: turno.terminal.nome,
+          });
+          await notificacoesService.criar({
+            lojaId: loja.id,
+            tipo: "TURNO_ABERTO_HORAS_DEMAIS",
+            severidade: "URGENTE",
+            titulo: "Fechamento de caixa não realizado",
+            mensagem: `O terminal ${turno.terminal.nome} passou do horário de fechamento (${horaAlvo}) e ainda está aberto.`,
+            entidade: "TurnoCaixa",
+            entidadeId: turno.id,
           });
 
           if (loja.configuracao?.fecharAutomaticamenteSemContagem) {

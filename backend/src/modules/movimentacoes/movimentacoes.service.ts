@@ -5,6 +5,7 @@ import { roleAtendeMinimo, type RoleUsuarioKey } from "../../config/constants";
 import { emitirParaLoja } from "../../lib/socket";
 import { SOCKET_EVENTS } from "../../sockets/events";
 import * as auditoriaService from "../auditoria/auditoria.service";
+import * as notificacoesService from "../notificacoes/notificacoes.service";
 import { calcularResumoSaldoTurno } from "../turnos/saldoCaixa.util";
 import { getFiscalAdapter, getMaquininhaAdapter } from "../integracoes/integracoes.factory";
 
@@ -197,6 +198,18 @@ export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx:
     movimentacaoId: movimentacao.id,
     tipo: movimentacao.tipo,
   });
+
+  if (movimentacao.tipo === "SANGRIA" && exigeConferenciaCruzada) {
+    await notificacoesService.criar({
+      lojaId: turno.lojaId,
+      tipo: "SANGRIA_ALTA_SEM_CONFERENCIA",
+      severidade: "ATENCAO",
+      titulo: "Sangria de valor alto aguardando conferência",
+      mensagem: `Sangria de R$ ${movimentacao.valor.toFixed(2)} exige conferência cruzada de um supervisor antes de ser considerada válida.`,
+      entidade: "MovimentacaoCaixa",
+      entidadeId: movimentacao.id,
+    });
+  }
 
   // Alerta de teto de gaveta — só dispara para movimentações que afetam dinheiro físico.
   if (formaPagamento === "DINHEIRO" && movimentacao.status === "ATIVA") {
