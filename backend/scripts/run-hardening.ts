@@ -25,6 +25,11 @@ async function main() {
   // Conecta como o superusuário dono das tabelas (nunca como fluxa_app aqui).
   const prisma = new PrismaClient({ datasources: { db: { url: directUrl } } });
 
+  // Nome do banco varia por ambiente (local = "fluxa", Railway = "railway" por
+  // padrão) — nunca hardcoded, extraído da própria connection string.
+  const nomeBanco = new URL(directUrl).pathname.replace(/^\//, "");
+  if (!nomeBanco) throw new Error("Não foi possível determinar o nome do banco a partir de DIRECT_DATABASE_URL.");
+
   console.log("Criando/atualizando a role restrita fluxa_app...");
   await prisma.$executeRawUnsafe(`
     DO $$
@@ -39,7 +44,7 @@ async function main() {
   `);
 
   console.log("Concedendo acesso ao schema e às tabelas...");
-  await prisma.$executeRawUnsafe(`GRANT CONNECT ON DATABASE fluxa TO fluxa_app;`);
+  await prisma.$executeRawUnsafe(`GRANT CONNECT ON DATABASE "${nomeBanco}" TO fluxa_app;`);
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO fluxa_app;`);
   await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO fluxa_app;`);
   await prisma.$executeRawUnsafe(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO fluxa_app;`);
