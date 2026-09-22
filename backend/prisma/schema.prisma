@@ -100,6 +100,10 @@ enum AcaoAuditoria {
   IMPORTACAO_EXTRATO_CARTAO
   CONCILIACAO_EXECUTADA
   CONCILIACAO_RESOLVIDA_MANUAL
+  CONTA_CRIADA
+  ASSINATURA_ATUALIZADA
+  ASSINATURA_PAGAMENTO_CONFIRMADO
+  ASSINATURA_PAGAMENTO_FALHOU
 }
 
 enum TipoIntegracao {
@@ -165,6 +169,43 @@ enum StatusConciliacaoMovimentacao {
   MANUAL
 }
 
+enum CicloAssinatura {
+  MENSAL
+  ANUAL
+}
+
+enum StatusAssinatura {
+  TRIAL
+  ATIVA
+  INADIMPLENTE
+  CANCELADA
+}
+
+enum StatusPagamento {
+  PENDENTE
+  CONFIRMADO
+  FALHOU
+  CANCELADO
+}
+
+enum TipoNotificacao {
+  TURNO_ABERTO_HORAS_DEMAIS
+  DIVERGENCIA_ACIMA_TOLERANCIA
+  SANGRIA_ALTA_SEM_CONFERENCIA
+  CONCILIACAO_PENDENTE_REVISAO
+  DIVERGENCIA_RECORRENTE
+  ASSINATURA_TRIAL_EXPIRANDO
+  ASSINATURA_PAGAMENTO_PENDENTE
+  ASSINATURA_PAGAMENTO_CONFIRMADO
+  ASSINATURA_PAGAMENTO_FALHOU
+}
+
+enum SeveridadeNotificacao {
+  INFO
+  ATENCAO
+  URGENTE
+}
+
 // ============================================================
 // CADASTRO / TENANT
 // ============================================================
@@ -173,6 +214,7 @@ model Loja {
   id        String   @id @default(uuid())
   nome      String
   cnpj      String?  @unique
+  segmento  String?
   endereco  String?
   timezone  String   @default("America/Sao_Paulo")
   ativo     Boolean  @default(true)
@@ -191,6 +233,9 @@ model Loja {
   transacoesExtrato      TransacaoExtratoCartao[]
   conciliacoesCartao     ConciliacaoCartao[]
   taxasContratadasCartao TaxaContratadaCartao[]
+
+  assinatura           Assinatura?
+  notificacoesInternas Notificacao[]
 
   @@map("lojas")
 }
@@ -214,6 +259,7 @@ model Usuario {
   id         String      @id @default(uuid())
   nome       String
   email      String      @unique
+  telefone   String?
   senhaHash  String
   roleGlobal RoleUsuario
   superAdmin Boolean     @default(false)
@@ -242,6 +288,8 @@ model Usuario {
 
   extratosCartaoImportados ExtratoCartao[]
   conciliacoesResolvidas   ConciliacaoCartao[]
+
+  notificacoesPessoais Notificacao[]
 
   @@map("usuarios")
 }
@@ -616,4 +664,86 @@ model TaxaContratadaCartao {
 
   @@unique([lojaId, bandeira, modalidade, parcelas, vigenteDesde])
   @@map("taxas_contratadas_cartao")
+}
+
+// ============================================================
+// CADASTRO PÚBLICO / PLANOS / ASSINATURA (pagamento via InfinitePay)
+// ============================================================
+
+model Plano {
+  id              String   @id @default(uuid())
+  nome            String   @unique
+  descricao       String?
+  funcionalidades String[] @default([])
+  valorMensal     Decimal  @db.Decimal(10, 2)
+  valorAnual      Decimal  @db.Decimal(10, 2)
+  limiteTerminais Int?
+  ordem           Int      @default(0)
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  assinaturas Assinatura[]
+  pagamentos  Pagamento[]
+
+  @@map("planos")
+}
+
+model Assinatura {
+  id              String           @id @default(uuid())
+  lojaId          String           @unique
+  loja            Loja             @relation(fields: [lojaId], references: [id])
+  planoId         String?
+  plano           Plano?           @relation(fields: [planoId], references: [id])
+  ciclo           CicloAssinatura?
+  status          StatusAssinatura @default(TRIAL)
+  trialFim        DateTime
+  periodoAtualFim DateTime?
+  canceladaEm     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  pagamentos Pagamento[]
+
+  @@map("assinaturas")
+}
+
+model Pagamento {
+  id             String          @id @default(uuid())
+  assinaturaId   String
+  assinatura     Assinatura      @relation(fields: [assinaturaId], references: [id])
+  planoId        String
+  plano          Plano           @relation(fields: [planoId], references: [id])
+  ciclo          CicloAssinatura
+  valor          Decimal         @db.Decimal(10, 2)
+  status         StatusPagamento @default(PENDENTE)
+  checkoutId     String?         @unique
+  checkoutUrl    String?
+  pagoEm         DateTime?
+  payloadWebhook Json?
+  createdAt      DateTime        @default(now())
+
+  @@index([assinaturaId])
+  @@map("pagamentos")
+}
+
+model Notificacao {
+  id         String                @id @default(uuid())
+  lojaId     String
+  loja       Loja                  @relation(fields: [lojaId], references: [id])
+  usuarioId  String?
+  usuario    Usuario?              @relation(fields: [usuarioId], references: [id])
+  tipo       TipoNotificacao
+  severidade SeveridadeNotificacao @default(INFO)
+  titulo     String
+  mensagem   String
+  entidade   String?
+  entidadeId String?
+  lidaEm     DateTime?
+  createdAt  DateTime              @default(now())
+
+  @@unique([lojaId, tipo, entidadeId])
+  @@index([lojaId, lidaEm])
+  @@index([lojaId, createdAt])
+  @@map("notificacoes")
 }

@@ -19,6 +19,9 @@ import { auditoriaRoutes } from "./modules/auditoria/auditoria.routes";
 import { configuracoesRoutes } from "./modules/configuracoes/configuracoes.routes";
 import { dashboardRoutes } from "./modules/dashboard/dashboard.routes";
 import { conciliacaoRoutes } from "./modules/conciliacao/conciliacao.routes";
+import { cadastroRoutes } from "./modules/cadastro/cadastro.routes";
+import { planosRoutes } from "./modules/planos/planos.routes";
+import { assinaturaRoutes } from "./modules/assinatura/assinatura.routes";
 
 export const app = express();
 
@@ -45,6 +48,9 @@ app.use("/api/auditoria", auditoriaRoutes);
 app.use("/api/configuracoes", configuracoesRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/conciliacao", conciliacaoRoutes);
+app.use("/api/cadastro", cadastroRoutes);
+app.use("/api/planos", planosRoutes);
+app.use("/api/assinatura", assinaturaRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

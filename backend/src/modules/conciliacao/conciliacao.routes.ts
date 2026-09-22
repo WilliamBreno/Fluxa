@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireLoja, requireRole } from "../../middlewares/auth.middleware";
+import { requireAssinaturaAtiva, requireAuth, requireLoja, requireRole } from "../../middlewares/auth.middleware";
 import { validateBody, validateQuery } from "../../middlewares/validate";
 import { asyncHandler } from "../../middlewares/errorHandler";
 import {
@@ -27,7 +27,7 @@ import {
 } from "./conciliacao.controller";
 
 export const conciliacaoRoutes = Router();
-conciliacaoRoutes.use(requireAuth, requireLoja, requireRole("SUPERVISOR"));
+conciliacaoRoutes.use(requireAuth, requireLoja, requireAssinaturaAtiva, requireRole("SUPERVISOR"));
 
 conciliacaoRoutes.post("/extratos", validateBody(uploadExtratoSchema), asyncHandler(uploadExtratoController));
 conciliacaoRoutes.post(

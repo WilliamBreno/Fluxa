@@ -5,6 +5,9 @@ import type { MaquininhaAdapter } from "./maquininha/maquininha.adapter.interfac
 import { MaquininhaAdapterStub } from "./maquininha/maquininha.adapter.stub";
 import type { NotificacaoAdapter } from "./notificacao/notificacao.adapter.interface";
 import { NotificacaoAdapterStub } from "./notificacao/notificacao.adapter.stub";
+import type { PagamentoAdapter } from "./pagamento/pagamento.adapter.interface";
+import { PagamentoAdapterStub } from "./pagamento/pagamento.adapter.stub";
+import { PagamentoAdapterInfinitepay } from "./pagamento/pagamento.adapter.infinitepay";
 
 /**
  * Ponto único de escolha de implementação por variável de ambiente.
@@ -32,5 +35,15 @@ export function getNotificacaoAdapter(): NotificacaoAdapter {
     case "stub":
     default:
       return new NotificacaoAdapterStub();
+  }
+}
+
+export function getPagamentoAdapter(): PagamentoAdapter {
+  switch (env.pagamentoProvider) {
+    case "infinitepay":
+      return new PagamentoAdapterInfinitepay();
+    case "stub":
+    default:
+      return new PagamentoAdapterStub();
   }
 }

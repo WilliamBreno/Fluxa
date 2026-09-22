@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireLoja } from "../../middlewares/auth.middleware";
+import { requireAssinaturaAtiva, requireAuth, requireLoja } from "../../middlewares/auth.middleware";
 import { validateBody, validateQuery } from "../../middlewares/validate";
 import { asyncHandler } from "../../middlewares/errorHandler";
 import {
@@ -19,7 +19,7 @@ import {
 
 export const turnosRoutes = Router();
 
-turnosRoutes.use(requireAuth, requireLoja);
+turnosRoutes.use(requireAuth, requireLoja, requireAssinaturaAtiva);
 
 turnosRoutes.get(
   "/sugestao-fundo-troco",

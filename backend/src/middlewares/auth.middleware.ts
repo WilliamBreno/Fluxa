@@ -77,3 +77,32 @@ export function requireLoja(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+export function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.usuario?.superAdmin) {
+    return res.status(403).json({ erro: "Ação restrita à equipe Fluxa." });
+  }
+  next();
+}
+
+/**
+ * Bloqueia o uso operacional da loja quando o trial acabou e não há
+ * assinatura paga ativa. Fica só nas rotas de operação/relatório (depois de
+ * requireLoja) — usuarios/lojas/planos/assinatura/notificacoes continuam
+ * acessíveis mesmo bloqueado, pra o dono conseguir resolver o pagamento.
+ */
+export async function requireAssinaturaAtiva(req: Request, res: Response, next: NextFunction) {
+  if (req.usuario?.superAdmin) return next();
+
+  const assinatura = await prisma.assinatura.findUnique({ where: { lojaId: req.usuario!.lojaId! } });
+  const agora = new Date();
+  const emTrial = assinatura?.status === "TRIAL" && assinatura.trialFim > agora;
+  const ativa = assinatura?.status === "ATIVA" && (!assinatura.periodoAtualFim || assinatura.periodoAtualFim > agora);
+
+  if (emTrial || ativa) return next();
+
+  return res.status(402).json({
+    erro: "Assinatura inativa ou período de teste encerrado. Escolha um plano para continuar.",
+    codigo: "ASSINATURA_INATIVA",
+  });
+}

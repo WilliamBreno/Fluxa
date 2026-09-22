@@ -5,6 +5,7 @@ import { prisma } from "../../lib/prisma";
 import { env } from "../../config/env";
 import { AppError } from "../../middlewares/errorHandler";
 import * as auditoriaService from "../auditoria/auditoria.service";
+import type { RoleUsuario } from "@prisma/client";
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -33,6 +34,52 @@ interface LoginInput {
   userAgent?: string;
 }
 
+interface UsuarioComLojas {
+  id: string;
+  nome: string;
+  email: string;
+  roleGlobal: RoleUsuario;
+  superAdmin: boolean;
+  lojas: { lojaId: string; loja: { nome: string }; role: RoleUsuario }[];
+}
+
+/**
+ * Emite access+refresh token para um usuário já autenticado por outro meio
+ * (senha conferida no login, ou conta recém-criada no cadastro público) —
+ * evita duplicar a lógica de token entre `login` e `cadastro.service.ts`.
+ */
+export async function emitirSessao(usuario: UsuarioComLojas, ip?: string) {
+  const accessToken = gerarAccessToken(usuario.id);
+  const refreshTokenBruto = randomUUID() + randomUUID();
+  const expiraEm = parseExpiresInParaData(env.jwtRefreshExpiresIn);
+
+  await prisma.refreshToken.create({
+    data: {
+      usuarioId: usuario.id,
+      tokenHash: hashToken(refreshTokenBruto),
+      expiraEm,
+      criadoEmIp: ip,
+    },
+  });
+
+  return {
+    accessToken,
+    refreshToken: refreshTokenBruto,
+    usuario: {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      roleGlobal: usuario.roleGlobal,
+      superAdmin: usuario.superAdmin,
+      lojas: usuario.lojas.map((ul) => ({
+        lojaId: ul.lojaId,
+        nome: ul.loja.nome,
+        role: ul.role,
+      })),
+    },
+  };
+}
+
 export async function login(input: LoginInput) {
   const usuario = await prisma.usuario.findUnique({
     where: { email: input.email },
@@ -56,18 +103,7 @@ export async function login(input: LoginInput) {
     throw new AppError("E-mail ou senha inválidos.", 401);
   }
 
-  const accessToken = gerarAccessToken(usuario.id);
-  const refreshTokenBruto = randomUUID() + randomUUID();
-  const expiraEm = parseExpiresInParaData(env.jwtRefreshExpiresIn);
-
-  await prisma.refreshToken.create({
-    data: {
-      usuarioId: usuario.id,
-      tokenHash: hashToken(refreshTokenBruto),
-      expiraEm,
-      criadoEmIp: input.ip,
-    },
-  });
+  const sessao = await emitirSessao(usuario, input.ip);
 
   await auditoriaService.registrar({
     lojaId: input.lojaId,
@@ -79,22 +115,7 @@ export async function login(input: LoginInput) {
     userAgent: input.userAgent,
   });
 
-  return {
-    accessToken,
-    refreshToken: refreshTokenBruto,
-    usuario: {
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      roleGlobal: usuario.roleGlobal,
-      superAdmin: usuario.superAdmin,
-      lojas: usuario.lojas.map((ul) => ({
-        lojaId: ul.lojaId,
-        nome: ul.loja.nome,
-        role: ul.role,
-      })),
-    },
-  };
+  return sessao;
 }
 
 export async function refresh(refreshTokenBruto: string, ip?: string) {

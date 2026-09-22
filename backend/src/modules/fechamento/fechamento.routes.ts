@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireLoja } from "../../middlewares/auth.middleware";
+import { requireAssinaturaAtiva, requireAuth, requireLoja } from "../../middlewares/auth.middleware";
 import { validateBody } from "../../middlewares/validate";
 import { asyncHandler } from "../../middlewares/errorHandler";
 import { confirmarFechamentoSchema, registrarContagemSchema } from "./fechamento.schemas";
@@ -12,7 +12,7 @@ import {
 
 /** Montado em /api/turnos/:id/fechamento. */
 export const fechamentoRoutes = Router({ mergeParams: true });
-fechamentoRoutes.use(requireAuth, requireLoja);
+fechamentoRoutes.use(requireAuth, requireLoja, requireAssinaturaAtiva);
 
 fechamentoRoutes.post("/iniciar", asyncHandler(iniciarController));
 fechamentoRoutes.post(

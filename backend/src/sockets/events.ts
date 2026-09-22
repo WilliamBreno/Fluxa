@@ -5,6 +5,7 @@ export const SOCKET_EVENTS = {
   ALERTA_TETO_GAVETA: "alerta:tetoGaveta",
   ALERTA_FECHAMENTO_NAO_REALIZADO: "alerta:fechamentoNaoRealizado",
   ALERTA_DIVERGENCIA_RECORRENTE: "alerta:divergenciaRecorrente",
+  NOTIFICACAO_NOVA: "notificacao:nova",
 } as const;
 
 export function nomeSalaLoja(lojaId: string): string {

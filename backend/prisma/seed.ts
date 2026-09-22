@@ -92,6 +92,80 @@ async function main() {
     });
   }
 
+  const planos = [
+    {
+      nome: "Essencial",
+      descricao: "Para quem está começando a organizar o caixa.",
+      funcionalidades: [
+        "1 caixa (terminal)",
+        "Abertura e fechamento com contagem cega",
+        "Leitura X e Redução Z",
+        "Relatórios básicos e auditoria",
+      ],
+      valorMensal: 79.9,
+      valorAnual: 799,
+      limiteTerminais: 1,
+      ordem: 1,
+    },
+    {
+      nome: "Profissional",
+      descricao: "Para negócios com mais de um caixa e cartão na maquininha.",
+      funcionalidades: [
+        "Até 5 caixas (terminais)",
+        "Tudo do Essencial",
+        "Conciliação de cartões e recebíveis",
+        "Modo offline com sincronização automática",
+        "Relatórios avançados e exportação (CSV/Excel/PDF)",
+      ],
+      valorMensal: 149.9,
+      valorAnual: 1499,
+      limiteTerminais: 5,
+      ordem: 2,
+    },
+    {
+      nome: "Enterprise",
+      descricao: "Para redes com várias lojas e operação mais exigente.",
+      funcionalidades: [
+        "Caixas ilimitados",
+        "Tudo do Profissional",
+        "Múltiplas lojas",
+        "Suporte prioritário",
+      ],
+      valorMensal: 299.9,
+      valorAnual: 2999,
+      limiteTerminais: null,
+      ordem: 3,
+    },
+  ];
+
+  for (const p of planos) {
+    await prisma.plano.upsert({
+      where: { nome: p.nome },
+      create: p,
+      update: {
+        descricao: p.descricao,
+        funcionalidades: p.funcionalidades,
+        valorMensal: p.valorMensal,
+        valorAnual: p.valorAnual,
+        limiteTerminais: p.limiteTerminais,
+        ordem: p.ordem,
+      },
+    });
+  }
+
+  const planoProfissional = await prisma.plano.findUniqueOrThrow({ where: { nome: "Profissional" } });
+  await prisma.assinatura.upsert({
+    where: { lojaId: loja.id },
+    create: {
+      lojaId: loja.id,
+      planoId: planoProfissional.id,
+      ciclo: "MENSAL",
+      status: "ATIVA",
+      trialFim: new Date(),
+    },
+    update: { planoId: planoProfissional.id, ciclo: "MENSAL", status: "ATIVA" },
+  });
+
   console.log("Seed concluído.");
   console.log(`Terminais: ${caixa1.nome}, ${caixa2.nome}`);
   console.log("Usuários de desenvolvimento (senha padrão para todos): " + SENHA_PADRAO_DEV);

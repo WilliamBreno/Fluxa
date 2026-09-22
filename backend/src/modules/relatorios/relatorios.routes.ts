@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireLoja, requireRole } from "../../middlewares/auth.middleware";
+import { requireAssinaturaAtiva, requireAuth, requireLoja, requireRole } from "../../middlewares/auth.middleware";
 import { validateQuery } from "../../middlewares/validate";
 import { asyncHandler } from "../../middlewares/errorHandler";
 import {
@@ -24,7 +24,7 @@ import {
 } from "./relatorios.controller";
 
 export const relatoriosRoutes = Router();
-relatoriosRoutes.use(requireAuth, requireLoja, requireRole("SUPERVISOR"));
+relatoriosRoutes.use(requireAuth, requireLoja, requireAssinaturaAtiva, requireRole("SUPERVISOR"));
 
 relatoriosRoutes.get(
   "/fechamento/:turnoId",

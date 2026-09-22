@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireLoja } from "../../middlewares/auth.middleware";
+import { requireAssinaturaAtiva, requireAuth, requireLoja } from "../../middlewares/auth.middleware";
 import { validateBody } from "../../middlewares/validate";
 import { asyncHandler } from "../../middlewares/errorHandler";
 import { criarMovimentacaoSchema } from "./movimentacoes.schemas";
@@ -11,7 +11,7 @@ import {
 
 /** Montado em /api/turnos/:turnoId/movimentacoes (mergeParams). */
 export const movimentacoesPorTurnoRoutes = Router({ mergeParams: true });
-movimentacoesPorTurnoRoutes.use(requireAuth, requireLoja);
+movimentacoesPorTurnoRoutes.use(requireAuth, requireLoja, requireAssinaturaAtiva);
 movimentacoesPorTurnoRoutes.get("/", asyncHandler(listarMovimentacoesController));
 movimentacoesPorTurnoRoutes.post(
   "/",
@@ -21,5 +21,5 @@ movimentacoesPorTurnoRoutes.post(
 
 /** Montado em /api/movimentacoes. */
 export const movimentacoesRoutes = Router();
-movimentacoesRoutes.use(requireAuth, requireLoja);
+movimentacoesRoutes.use(requireAuth, requireLoja, requireAssinaturaAtiva);
 movimentacoesRoutes.patch("/:id/conferir", asyncHandler(conferirMovimentacaoController));

@@ -32,6 +32,14 @@ async function main() {
     update: { nome: lojaNome },
   });
 
+  // Conta provisionada internamente (não passou pelo cadastro público) não
+  // deve ficar sujeita a trial/cobrança — ATIVA sem vencimento controlado.
+  await prisma.assinatura.upsert({
+    where: { lojaId: loja.id },
+    create: { lojaId: loja.id, status: "ATIVA", trialFim: new Date() },
+    update: {},
+  });
+
   const terminal = await prisma.terminal.upsert({
     where: { lojaId_codigo: { lojaId: loja.id, codigo: "01" } },
     create: { lojaId: loja.id, codigo: "01", nome: "Caixa 1" },

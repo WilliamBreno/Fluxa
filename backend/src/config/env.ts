@@ -20,5 +20,11 @@ export const env = {
   fiscalProvider: process.env.FISCAL_PROVIDER ?? "stub",
   maquininhaProvider: process.env.MAQUININHA_PROVIDER ?? "stub",
   notificacaoProvider: process.env.NOTIFICACAO_PROVIDER ?? "stub",
+  pagamentoProvider: process.env.PAGAMENTO_PROVIDER ?? "stub",
+  infinitepayApiKey: process.env.INFINITEPAY_API_KEY,
+  infinitepayHandle: process.env.INFINITEPAY_HANDLE,
+  infinitepayWebhookSecret: process.env.INFINITEPAY_WEBHOOK_SECRET,
+  appPublicUrl: process.env.APP_PUBLIC_URL ?? "http://localhost:5173",
+  apiPublicUrl: process.env.API_PUBLIC_URL ?? "http://localhost:3333",
   defaultTimezone: process.env.DEFAULT_TIMEZONE ?? "America/Sao_Paulo",
 };

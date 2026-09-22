@@ -2,9 +2,9 @@ import type { Request, Response } from "express";
 import { AppError } from "../../middlewares/errorHandler";
 import * as authService from "./auth.service";
 
-const REFRESH_COOKIE = "fluxa_refresh_token";
+export const REFRESH_COOKIE = "fluxa_refresh_token";
 const EM_PRODUCAO = process.env.NODE_ENV === "production";
-const COOKIE_OPTS = {
+export const COOKIE_OPTS = {
   httpOnly: true,
   // "none" é obrigatório para cookie cross-site (frontend na Vercel, backend
   // no Railway — domínios diferentes); exige secure:true, que browsers só
