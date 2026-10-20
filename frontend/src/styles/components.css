@@ -482,3 +482,38 @@
     font-size: 16px;
   }
 }
+
+/* Campo de senha com botão de mostrar/ocultar */
+.fx-input-senha {
+  position: relative;
+  display: flex;
+}
+.fx-input-senha .fx-input {
+  flex: 1;
+  min-width: 0;
+  padding-right: 44px;
+}
+.fx-input-senha__botao {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fx-text-tertiary);
+  cursor: pointer;
+}
+.fx-input-senha__botao:hover {
+  color: var(--fx-text-primary);
+  background: var(--fx-surface-hover);
+}
+.fx-input-senha__botao:focus-visible {
+  outline: 2px solid var(--fx-chart-1);
+  outline-offset: 0;
+}

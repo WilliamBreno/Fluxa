@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { InputSenha } from "@/components/ui/InputSenha";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Table } from "@/components/ui/Table";
@@ -64,9 +65,9 @@ export function SecaoUsuarios() {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <Input label="Nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
           <Input label="E-mail" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input
+          <InputSenha
             label="Senha inicial"
-            type="password"
+            autoComplete="new-password"
             required
             minLength={6}
             value={senha}
