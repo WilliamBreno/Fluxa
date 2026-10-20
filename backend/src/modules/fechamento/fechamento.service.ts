@@ -12,6 +12,7 @@ import { calcularResumoSaldoTurno, TODAS_FORMAS_PAGAMENTO } from "../turnos/sald
 
 interface ContextoRequisicao {
   usuarioId: string;
+  lojaId: string;
   roleNaLoja?: string;
   ip?: string;
   userAgent?: string;
@@ -22,7 +23,7 @@ interface ContextoRequisicao {
  * retorna nenhum valor esperado — é só o "início" do procedimento.
  */
 export async function iniciar(turnoId: string, ctx: ContextoRequisicao) {
-  const turno = await prisma.turnoCaixa.findUnique({ where: { id: turnoId } });
+  const turno = await prisma.turnoCaixa.findFirst({ where: { id: turnoId, lojaId: ctx.lojaId } });
   if (!turno) throw new AppError("Turno não encontrado.", 404);
   if (turno.status !== "ABERTO") throw new AppError("Este caixa já está fechado.", 409);
 
@@ -69,8 +70,8 @@ export async function registrarContagem(
   input: { contagens: ContagemInput[] },
   ctx: ContextoRequisicao
 ) {
-  const turno = await prisma.turnoCaixa.findUnique({
-    where: { id: turnoId },
+  const turno = await prisma.turnoCaixa.findFirst({
+    where: { id: turnoId, lojaId: ctx.lojaId },
     include: { loja: { include: { configuracao: true } } },
   });
   if (!turno) throw new AppError("Turno não encontrado.", 404);
@@ -148,9 +149,9 @@ export async function registrarContagem(
   return resultado;
 }
 
-export async function obterDivergencia(turnoId: string) {
-  const fechamento = await prisma.fechamentoCaixa.findUnique({
-    where: { turnoId },
+export async function obterDivergencia(turnoId: string, lojaId: string) {
+  const fechamento = await prisma.fechamentoCaixa.findFirst({
+    where: { turnoId, turno: { lojaId } },
     include: { contagens: true },
   });
   if (!fechamento) throw new AppError("Fechamento ainda não iniciado para este turno.", 404);
@@ -167,8 +168,8 @@ interface ConfirmarInput {
 }
 
 export async function confirmar(turnoId: string, input: ConfirmarInput, ctx: ContextoRequisicao) {
-  const turno = await prisma.turnoCaixa.findUnique({
-    where: { id: turnoId },
+  const turno = await prisma.turnoCaixa.findFirst({
+    where: { id: turnoId, lojaId: ctx.lojaId },
     include: { loja: { include: { configuracao: true } }, terminal: true },
   });
   if (!turno) throw new AppError("Turno não encontrado.", 404);

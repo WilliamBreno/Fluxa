@@ -28,9 +28,13 @@ export class PagamentoAdapterStub implements PagamentoAdapter {
     };
   }
 
-  async verificarWebhook(payload: unknown): Promise<WebhookVerificado> {
-    const corpo = payload as { checkoutId?: string; status?: "CONFIRMADO" | "FALHOU" };
-    if (!corpo?.checkoutId || !corpo?.status) return { valido: false };
-    return { valido: true, checkoutId: corpo.checkoutId, status: corpo.status };
+  /**
+   * No modo stub não existe provedor para autenticar o webhook, então ele nunca
+   * confirma nada: aceitar o corpo da requisição deixava qualquer pessoa ativar
+   * uma assinatura sem pagar. A aprovação simulada passa só pela rota
+   * autenticada /assinatura/simular, presa à loja de quem chama.
+   */
+  async verificarWebhook(): Promise<WebhookVerificado> {
+    return { valido: false };
   }
 }

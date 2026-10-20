@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { requireAuth } from "../../middlewares/auth.middleware";
+import { requireAuth, requireLoja, requireRole } from "../../middlewares/auth.middleware";
 import { validateBody } from "../../middlewares/validate";
 import { asyncHandler } from "../../middlewares/errorHandler";
-import { iniciarCheckoutSchema } from "./assinatura.schemas";
+import { iniciarCheckoutSchema, simularSchema } from "./assinatura.schemas";
 import {
   iniciarCheckoutController,
   obterStatusController,
@@ -21,7 +21,16 @@ assinaturaRoutes.post(
   validateBody(iniciarCheckoutSchema),
   asyncHandler(iniciarCheckoutController)
 );
-assinaturaRoutes.post("/simular", requireAuth, asyncHandler(simularController));
+// Só em modo stub (checado no service): o gerente da própria loja aprova o
+// pagamento simulado. Nunca vale para pagamento de outra loja.
+assinaturaRoutes.post(
+  "/simular",
+  requireAuth,
+  requireLoja,
+  requireRole("GERENTE"),
+  validateBody(simularSchema),
+  asyncHandler(simularController)
+);
 
 // Público: chamado pelo provedor de pagamento, não pelo navegador do usuário.
 assinaturaRoutes.post("/webhook", asyncHandler(webhookController));

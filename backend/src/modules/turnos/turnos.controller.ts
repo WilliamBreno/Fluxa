@@ -4,6 +4,9 @@ import * as turnosService from "./turnos.service";
 function contexto(req: Request) {
   return {
     usuarioId: req.usuario!.id,
+    // Loja validada pelo requireAuth (membership ativa). Todo turno/terminal
+    // acessado precisa pertencer a ela — o id na URL sozinho não basta.
+    lojaId: req.usuario!.lojaId!,
     roleNaLoja: req.usuario!.roleNaLoja,
     ip: req.ip,
     userAgent: req.headers["user-agent"],
@@ -12,7 +15,7 @@ function contexto(req: Request) {
 
 export async function sugestaoFundoTrocoController(req: Request, res: Response) {
   const { terminalId } = req.query as { terminalId: string };
-  res.json(await turnosService.sugestaoFundoTroco(terminalId));
+  res.json(await turnosService.sugestaoFundoTroco(terminalId, req.usuario!.lojaId!));
 }
 
 export async function abrirTurnoController(req: Request, res: Response) {
@@ -41,5 +44,5 @@ export async function listarTurnosController(req: Request, res: Response) {
 }
 
 export async function buscarTurnoController(req: Request, res: Response) {
-  res.json(await turnosService.buscarPorId(req.params.id));
+  res.json(await turnosService.buscarPorId(req.params.id, req.usuario!.lojaId!));
 }

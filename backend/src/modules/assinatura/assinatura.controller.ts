@@ -23,6 +23,6 @@ export async function webhookController(req: Request, res: Response) {
 
 export async function simularController(req: Request, res: Response) {
   const { checkoutId, aprovado } = req.body as { checkoutId: string; aprovado: boolean };
-  await assinaturaService.simularAprovacao(checkoutId, aprovado);
+  await assinaturaService.simularAprovacao(lojaIdObrigatorio(req), checkoutId, aprovado);
   res.status(204).send();
 }

@@ -43,7 +43,9 @@ export function getPagamentoAdapter(): PagamentoAdapter {
     case "infinitepay":
       return new PagamentoAdapterInfinitepay();
     case "stub":
-    default:
       return new PagamentoAdapterStub();
+    default:
+      // Valor desconhecido (ex.: erro de digitação) não pode cair no stub em silêncio.
+      throw new Error(`PAGAMENTO_PROVIDER desconhecido: "${env.pagamentoProvider}". Use "infinitepay" ou "stub".`);
   }
 }

@@ -126,9 +126,13 @@ export async function processarWebhook(payload: unknown, headers: Record<string,
 }
 
 /** Só funciona quando PAGAMENTO_PROVIDER=stub — dá pra testar o fluxo sem provedor real. */
-export async function simularAprovacao(checkoutId: string, aprovado: boolean) {
+export async function simularAprovacao(lojaId: string, checkoutId: string, aprovado: boolean) {
   if (env.pagamentoProvider !== "stub") {
     throw new AppError("Simulação de pagamento só está disponível em modo stub.", 403);
+  }
+  const pagamento = await prisma.pagamento.findUnique({ where: { checkoutId }, include: { assinatura: true } });
+  if (!pagamento || pagamento.assinatura.lojaId !== lojaId) {
+    throw new AppError("Pagamento não encontrado.", 404);
   }
   await aplicarResultadoPagamento(checkoutId, aprovado ? "CONFIRMADO" : "FALHOU", { simulado: true });
 }

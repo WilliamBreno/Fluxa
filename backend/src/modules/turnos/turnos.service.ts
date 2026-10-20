@@ -9,6 +9,7 @@ import { calcularResumoSaldoTurno } from "./saldoCaixa.util";
 
 interface ContextoRequisicao {
   usuarioId: string;
+  lojaId: string;
   roleNaLoja?: string;
   ip?: string;
   userAgent?: string;
@@ -47,7 +48,9 @@ export async function calcularSugestaoFundoTroco(
   return soma.div(turnosFechados.length);
 }
 
-export async function sugestaoFundoTroco(terminalId: string) {
+export async function sugestaoFundoTroco(terminalId: string, lojaId: string) {
+  const terminal = await prisma.terminal.findFirst({ where: { id: terminalId, lojaId }, select: { id: true } });
+  if (!terminal) throw new AppError("Terminal não encontrado.", 404);
   const sugestao = await calcularSugestaoFundoTroco(terminalId);
   return { sugestao: sugestao ? sugestao.toFixed(2) : null };
 }
@@ -60,7 +63,7 @@ interface AbrirTurnoInput {
 }
 
 export async function abrirTurno(input: AbrirTurnoInput, ctx: ContextoRequisicao) {
-  const terminal = await prisma.terminal.findUnique({ where: { id: input.terminalId } });
+  const terminal = await prisma.terminal.findFirst({ where: { id: input.terminalId, lojaId: ctx.lojaId } });
   if (!terminal || !terminal.ativo) {
     throw new AppError("Terminal inválido ou inativo.", 404);
   }
@@ -151,11 +154,14 @@ export async function trocarOperador(
   input: TrocarOperadorInput,
   ctx: ContextoRequisicao
 ) {
-  const turno = await prisma.turnoCaixa.findUnique({ where: { id: turnoId } });
+  const turno = await prisma.turnoCaixa.findFirst({ where: { id: turnoId, lojaId: ctx.lojaId } });
   if (!turno) throw new AppError("Turno não encontrado.", 404);
   if (turno.status !== "ABERTO") throw new AppError("Turno já está fechado.", 409);
 
-  const operadorNovo = await prisma.usuario.findUnique({ where: { id: input.operadorNovoId } });
+  // O novo responsável precisa ser funcionário ativo desta mesma loja.
+  const operadorNovo = await prisma.usuario.findFirst({
+    where: { id: input.operadorNovoId, lojas: { some: { lojaId: turno.lojaId, ativo: true } } },
+  });
   if (!operadorNovo || !operadorNovo.ativo) {
     throw new AppError("Operador informado é inválido ou está inativo.", 400);
   }
@@ -197,8 +203,8 @@ export async function trocarOperador(
  * não cria nem altera FechamentoCaixa, pode ser chamada quantas vezes quiser.
  */
 export async function leituraX(turnoId: string, ctx: ContextoRequisicao) {
-  const turno = await prisma.turnoCaixa.findUnique({
-    where: { id: turnoId },
+  const turno = await prisma.turnoCaixa.findFirst({
+    where: { id: turnoId, lojaId: ctx.lojaId },
     include: {
       terminal: true,
       operadorResponsavelAtual: { select: { id: true, nome: true } },
@@ -229,6 +235,7 @@ interface ListarTurnosFiltros {
 
 export async function listar(filtros: ListarTurnosFiltros, ctx: ContextoRequisicao) {
   const where: Prisma.TurnoCaixaWhereInput = {
+    lojaId: ctx.lojaId,
     terminalId: filtros.terminalId,
     status: filtros.status,
   };
@@ -258,9 +265,9 @@ export async function listar(filtros: ListarTurnosFiltros, ctx: ContextoRequisic
   return { itens, total, pagina: filtros.pagina, tamanhoPagina: filtros.tamanhoPagina };
 }
 
-export async function buscarPorId(turnoId: string) {
-  const turno = await prisma.turnoCaixa.findUnique({
-    where: { id: turnoId },
+export async function buscarPorId(turnoId: string, lojaId: string) {
+  const turno = await prisma.turnoCaixa.findFirst({
+    where: { id: turnoId, lojaId },
     include: {
       terminal: true,
       operadorResponsavelAtual: { select: { id: true, nome: true } },
