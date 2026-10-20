@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, renovarSessao } from "./client";
 
 export interface LojaDoUsuario {
   lojaId: string;
@@ -24,8 +24,7 @@ export async function login(email: string, senha: string) {
 }
 
 export async function refresh() {
-  const { data } = await api.post<{ accessToken: string }>("/auth/refresh");
-  return data;
+  return { accessToken: await renovarSessao() };
 }
 
 export async function me() {
