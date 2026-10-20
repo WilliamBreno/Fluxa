@@ -3,13 +3,15 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SecaoGeral } from "./components/SecaoGeral";
 import { SecaoUsuarios } from "./components/SecaoUsuarios";
 import { SecaoTerminais } from "./components/SecaoTerminais";
+import { SecaoServicos } from "./components/SecaoServicos";
 
-type Aba = "geral" | "usuarios" | "terminais";
+type Aba = "geral" | "usuarios" | "terminais" | "servicos";
 
 const ABAS: { value: Aba; label: string }[] = [
   { value: "geral", label: "Geral" },
   { value: "usuarios", label: "Usuários" },
   { value: "terminais", label: "Terminais" },
+  { value: "servicos", label: "Serviços" },
 ];
 
 export function ConfiguracoesPage() {
@@ -41,6 +43,7 @@ export function ConfiguracoesPage() {
       {aba === "geral" && <SecaoGeral />}
       {aba === "usuarios" && <SecaoUsuarios />}
       {aba === "terminais" && <SecaoTerminais />}
+      {aba === "servicos" && <SecaoServicos />}
     </AppShell>
   );
 }

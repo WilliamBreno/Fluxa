@@ -16,6 +16,9 @@ import { DashboardPage } from "@/pages/Dashboard/DashboardPage";
 import { RelatoriosPage } from "@/pages/Relatorios/RelatoriosPage";
 import { ConfiguracoesPage } from "@/pages/Configuracoes/ConfiguracoesPage";
 import { ConciliacaoPage } from "@/pages/Conciliacao/ConciliacaoPage";
+import { AgendaPage } from "@/pages/Agenda/AgendaPage";
+import { ClientesPage } from "@/pages/Clientes/ClientesPage";
+import { ClienteDetalhePage } from "@/pages/Clientes/ClienteDetalhePage";
 
 export default function App() {
   return (
@@ -101,6 +104,30 @@ export default function App() {
         element={
           <RotaProtegida>
             <LeituraXPage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/agenda"
+        element={
+          <RotaProtegida>
+            <AgendaPage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/clientes"
+        element={
+          <RotaProtegida>
+            <ClientesPage />
+          </RotaProtegida>
+        }
+      />
+      <Route
+        path="/clientes/:id"
+        element={
+          <RotaProtegida>
+            <ClienteDetalhePage />
           </RotaProtegida>
         }
       />

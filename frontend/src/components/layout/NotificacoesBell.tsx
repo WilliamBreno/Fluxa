@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useSocketEvent } from "@/hooks/useSocketEvent";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +18,7 @@ export function NotificacoesBell() {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const navigate = useNavigate();
 
   function carregar() {
     notificacoesApi
@@ -100,7 +102,14 @@ export function NotificacoesBell() {
             {notificacoes.map((n) => (
               <button
                 key={n.id}
-                onClick={() => !n.lidaEm && handleMarcarLida(n.id)}
+                onClick={() => {
+                  if (!n.lidaEm) handleMarcarLida(n.id);
+                  // Aviso de agendamento leva direto ao horário (entidadeId vem como "<id>:confirmacao").
+                  if (n.entidade === "Agendamento" && n.entidadeId) {
+                    setModalAberto(false);
+                    navigate(`/agenda?agendamento=${n.entidadeId.split(":")[0]}`);
+                  }
+                }}
                 style={{
                   textAlign: "left",
                   border: "1px solid var(--fx-border-subtle)",
@@ -108,7 +117,7 @@ export function NotificacoesBell() {
                   borderRadius: "var(--fx-radius-control)",
                   padding: 10,
                   background: n.lidaEm ? "transparent" : "var(--fx-surface-hover)",
-                  cursor: n.lidaEm ? "default" : "pointer",
+                  cursor: n.lidaEm && n.entidade !== "Agendamento" ? "default" : "pointer",
                 }}
               >
                 <div style={{ font: "var(--fx-body-sm)", fontWeight: 600 }}>{n.titulo}</div>

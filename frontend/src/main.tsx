@@ -7,6 +7,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { OfflineProvider } from "@/offline/OfflineProvider";
 import "@/styles/base.css";
 import "@/styles/components.css";
+import "@/styles/agenda.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

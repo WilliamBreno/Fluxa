@@ -166,6 +166,78 @@ async function main() {
     update: { planoId: planoProfissional.id, ciclo: "MENSAL", status: "ATIVA" },
   });
 
+  // Agenda de exemplo: catálogo de serviços, alguns clientes e o dia de hoje
+  // já com horários marcados, para a tela de agenda não abrir vazia em dev.
+  const servicosExemplo = [
+    { nome: "Atendimento padrão", duracaoMinutos: 30, preco: 60, cor: "#2a78d6" },
+    { nome: "Atendimento completo", duracaoMinutos: 60, preco: 120, cor: "#1baf7a" },
+    { nome: "Retorno", duracaoMinutos: 20, preco: 0, cor: "#eda100" },
+    { nome: "Avaliação", duracaoMinutos: 45, preco: 90, cor: "#e87ba4" },
+  ];
+  const servicosCriados: { id: string; duracaoMinutos: number; preco: number }[] = [];
+  for (const s of servicosExemplo) {
+    const servico = await prisma.servico.upsert({
+      where: { lojaId_nome: { lojaId: loja.id, nome: s.nome } },
+      create: { ...s, lojaId: loja.id },
+      update: {},
+    });
+    servicosCriados.push({ id: servico.id, duracaoMinutos: s.duracaoMinutos, preco: s.preco });
+  }
+
+  const clientesExemplo = [
+    { nome: "Ana Paula Ribeiro", telefone: "11987654321", email: "ana.ribeiro@exemplo.com", tags: ["vip"], cidade: "São Paulo", uf: "SP" },
+    { nome: "Bruno Carvalho", telefone: "11991234567", tags: ["indicação"], cidade: "São Paulo", uf: "SP" },
+    { nome: "Carla Mendes", telefone: "11976543210", email: "carla.m@exemplo.com", tags: [], cidade: "Osasco", uf: "SP" },
+    { nome: "Diego Fernandes", telefone: "11965432109", tags: ["vip", "pontual"], cidade: "São Paulo", uf: "SP" },
+    { nome: "Elaine Costa", telefone: "11954321098", tags: [], cidade: "Guarulhos", uf: "SP" },
+  ];
+  const jaTemClientes = (await prisma.cliente.count({ where: { lojaId: loja.id } })) > 0;
+  if (!jaTemClientes) {
+    const criadoPorId = usuariosCriados["gerente@fluxa.local"];
+    const profissionais = [usuariosCriados["operador1@fluxa.local"], usuariosCriados["operador2@fluxa.local"]];
+    const clientes = [];
+    for (const c of clientesExemplo) {
+      clientes.push(await prisma.cliente.create({ data: { ...c, lojaId: loja.id, criadoPorId } }));
+    }
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const em = (diasOffset: number, hora: number, minuto = 0) => {
+      const d = new Date(hoje);
+      d.setDate(d.getDate() + diasOffset);
+      d.setHours(hora, minuto, 0, 0);
+      return d;
+    };
+    const agenda = [
+      { cliente: 0, servico: 1, prof: 0, inicio: em(0, 9), status: "CONCLUIDO" as const },
+      { cliente: 1, servico: 0, prof: 1, inicio: em(0, 9, 30), status: "CONCLUIDO" as const },
+      { cliente: 2, servico: 3, prof: 0, inicio: em(0, 11), status: "CONFIRMADO" as const },
+      { cliente: 3, servico: 0, prof: 1, inicio: em(0, 14), status: "AGENDADO" as const },
+      { cliente: 4, servico: 2, prof: 0, inicio: em(0, 15, 30), status: "AGENDADO" as const },
+      { cliente: 0, servico: 0, prof: 1, inicio: em(1, 10), status: "AGENDADO" as const },
+      { cliente: 1, servico: 1, prof: 0, inicio: em(-7, 16), status: "FALTOU" as const },
+      { cliente: 3, servico: 1, prof: 0, inicio: em(-14, 10), status: "CONCLUIDO" as const },
+    ];
+    for (const a of agenda) {
+      const servico = servicosCriados[a.servico];
+      await prisma.agendamento.create({
+        data: {
+          lojaId: loja.id,
+          clienteId: clientes[a.cliente].id,
+          servicoId: servico.id,
+          profissionalId: profissionais[a.prof],
+          inicio: a.inicio,
+          fim: new Date(a.inicio.getTime() + servico.duracaoMinutos * 60_000),
+          valor: servico.preco,
+          status: a.status,
+          criadoPorId,
+          confirmadoEm: a.status === "CONFIRMADO" ? new Date() : null,
+          concluidoEm: a.status === "CONCLUIDO" ? a.inicio : null,
+        },
+      });
+    }
+  }
+
   console.log("Seed concluído.");
   console.log(`Terminais: ${caixa1.nome}, ${caixa2.nome}`);
   console.log("Usuários de desenvolvimento (senha padrão para todos): " + SENHA_PADRAO_DEV);
