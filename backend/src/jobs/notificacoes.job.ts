@@ -5,6 +5,7 @@ import * as notificacoesService from "../modules/notificacoes/notificacoes.servi
 import * as relatoriosService from "../modules/relatorios/relatorios.service";
 
 const HORAS_AVISO_TURNO_ABERTO = 10;
+const HORAS_ANTECEDENCIA_CONFIRMACAO = 2;
 
 /**
  * Notificações que dependem de acumular/verificar estado ao longo do tempo
@@ -19,6 +20,7 @@ export function registrarJobNotificacoes() {
       await avisarConciliacoesPendentes();
       await avisarTrialExpirando();
       await avisarDivergenciaRecorrente();
+      await avisarAgendamentosSemConfirmacao();
     } catch (err) {
       logger.error("[job notificacoes] erro inesperado", err);
     }
@@ -106,5 +108,34 @@ async function avisarDivergenciaRecorrente() {
         entidadeId: `${alerta.operadorId}:${mesAtual}`,
       });
     }
+  }
+}
+
+/** Cliente marcado para daqui a pouco e ninguém confirmou com ele — é a hora de ligar ou mandar mensagem. */
+async function avisarAgendamentosSemConfirmacao() {
+  const agora = new Date();
+  const limite = new Date(agora.getTime() + HORAS_ANTECEDENCIA_CONFIRMACAO * 60 * 60 * 1000);
+  const agendamentos = await prisma.agendamento.findMany({
+    where: { status: "AGENDADO", inicio: { gte: agora, lte: limite } },
+    include: { cliente: { select: { nome: true } }, servico: { select: { nome: true } }, loja: { select: { timezone: true } } },
+  });
+
+  for (const ag of agendamentos) {
+    const hora = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: ag.loja.timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(ag.inicio);
+    await notificacoesService.criar({
+      lojaId: ag.lojaId,
+      usuarioId: ag.profissionalId ?? undefined,
+      tipo: "AGENDAMENTO_SEM_CONFIRMACAO",
+      severidade: "ATENCAO",
+      titulo: "Agendamento sem confirmação",
+      mensagem: `${ag.cliente.nome} está marcado(a) às ${hora}${ag.servico ? ` (${ag.servico.nome})` : ""} e ainda não confirmou.`,
+      entidade: "Agendamento",
+      entidadeId: `${ag.id}:confirmacao`,
+    });
   }
 }

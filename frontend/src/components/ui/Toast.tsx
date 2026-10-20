@@ -46,6 +46,20 @@ export function useToast() {
 }
 
 export function mensagemDeErro(err: unknown): string {
-  const qualquer = err as { response?: { data?: { erro?: string } } };
-  return qualquer?.response?.data?.erro ?? "Ocorreu um erro inesperado. Tente novamente.";
+  const qualquer = err as { request?: unknown; response?: { status?: number; data?: { erro?: string } } };
+  const erroDaApi = qualquer?.response?.data?.erro;
+  if (erroDaApi) return erroDaApi;
+
+  // Sem resposta nenhuma: rede caiu, servidor desligado ou bloqueio de CORS.
+  if (qualquer?.request && !qualquer.response) {
+    return "Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.";
+  }
+  // Resposta que não veio da nossa API (sem o campo "erro"): hospedagem fora do
+  // ar, gateway, 404 da plataforma. Antes isso aparecia como "erro inesperado"
+  // e parecia problema de senha.
+  const status = qualquer?.response?.status;
+  if (status && (status >= 500 || status === 404)) {
+    return `O servidor está indisponível no momento (código ${status}). Tente novamente em alguns minutos.`;
+  }
+  return "Ocorreu um erro inesperado. Tente novamente.";
 }

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { InputSenha } from "@/components/ui/InputSenha";
 import { Card } from "@/components/ui/Card";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
 
@@ -57,15 +58,16 @@ export function LoginPage() {
           <Input
             label="E-mail"
             type="email"
+            autoComplete="username"
             required
             autoFocus
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
           />
-          <Input
+          <InputSenha
             label="Senha"
-            type="password"
+            autoComplete="current-password"
             required
             value={senha}
             onChange={(e) => setSenha(e.target.value)}

@@ -104,6 +104,12 @@ enum AcaoAuditoria {
   ASSINATURA_ATUALIZADA
   ASSINATURA_PAGAMENTO_CONFIRMADO
   ASSINATURA_PAGAMENTO_FALHOU
+  CLIENTE_CRIADO
+  CLIENTE_ATUALIZADO
+  SERVICO_ALTERADO
+  AGENDAMENTO_CRIADO
+  AGENDAMENTO_ATUALIZADO
+  AGENDAMENTO_STATUS_ALTERADO
 }
 
 enum TipoIntegracao {
@@ -198,12 +204,22 @@ enum TipoNotificacao {
   ASSINATURA_PAGAMENTO_PENDENTE
   ASSINATURA_PAGAMENTO_CONFIRMADO
   ASSINATURA_PAGAMENTO_FALHOU
+  AGENDAMENTO_SEM_CONFIRMACAO
 }
 
 enum SeveridadeNotificacao {
   INFO
   ATENCAO
   URGENTE
+}
+
+enum StatusAgendamento {
+  AGENDADO
+  CONFIRMADO
+  EM_ATENDIMENTO
+  CONCLUIDO
+  CANCELADO
+  FALTOU
 }
 
 // ============================================================
@@ -236,6 +252,10 @@ model Loja {
 
   assinatura           Assinatura?
   notificacoesInternas Notificacao[]
+
+  clientes     Cliente[]
+  servicos     Servico[]
+  agendamentos Agendamento[]
 
   @@map("lojas")
 }
@@ -290,6 +310,11 @@ model Usuario {
   conciliacoesResolvidas   ConciliacaoCartao[]
 
   notificacoesPessoais Notificacao[]
+
+  clientesCadastrados      Cliente[]     @relation("ClienteCriadoPor")
+  notasCliente             ClienteNota[]
+  agendamentosProfissional Agendamento[] @relation("AgendamentoProfissional")
+  agendamentosCriados      Agendamento[] @relation("AgendamentoCriadoPor")
 
   @@map("usuarios")
 }
@@ -746,4 +771,111 @@ model Notificacao {
   @@index([lojaId, lidaEm])
   @@index([lojaId, createdAt])
   @@map("notificacoes")
+}
+
+// ============================================================
+// CLIENTES E AGENDA (controle interno — o cliente nunca agenda sozinho,
+// quem marca é sempre um funcionário da loja)
+// ============================================================
+
+model Cliente {
+  id             String    @id @default(uuid())
+  lojaId         String
+  loja           Loja      @relation(fields: [lojaId], references: [id])
+  nome           String
+  // Só dígitos. Único por loja; vários clientes sem CPF convivem (NULL não colide no Postgres).
+  cpf            String?
+  telefone       String?
+  email          String?
+  dataNascimento DateTime? @db.Date
+  cep            String?
+  logradouro     String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cidade         String?
+  uf             String?   @db.VarChar(2)
+  origem         String?
+  tags           String[]  @default([])
+  observacoes    String?
+  ativo          Boolean   @default(true)
+  criadoPorId    String
+  criadoPor      Usuario   @relation("ClienteCriadoPor", fields: [criadoPorId], references: [id])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  notas        ClienteNota[]
+  agendamentos Agendamento[]
+
+  @@unique([lojaId, cpf])
+  @@index([lojaId, nome])
+  @@index([lojaId, telefone])
+  @@map("clientes")
+}
+
+model ClienteNota {
+  id        String   @id @default(uuid())
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  autorId   String
+  autor     Usuario  @relation(fields: [autorId], references: [id])
+  texto     String
+  createdAt DateTime @default(now())
+
+  @@index([clienteId, createdAt])
+  @@map("clientes_notas")
+}
+
+model Servico {
+  id             String   @id @default(uuid())
+  lojaId         String
+  loja           Loja     @relation(fields: [lojaId], references: [id])
+  nome           String
+  descricao      String?
+  duracaoMinutos Int
+  preco          Decimal  @db.Decimal(10, 2)
+  cor            String   @default("#2a78d6")
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  agendamentos Agendamento[]
+
+  @@unique([lojaId, nome])
+  @@map("servicos")
+}
+
+model Agendamento {
+  id                 String            @id @default(uuid())
+  lojaId             String
+  loja               Loja              @relation(fields: [lojaId], references: [id])
+  clienteId          String
+  cliente            Cliente           @relation(fields: [clienteId], references: [id])
+  servicoId          String?
+  servico            Servico?          @relation(fields: [servicoId], references: [id])
+  profissionalId     String?
+  profissional       Usuario?          @relation("AgendamentoProfissional", fields: [profissionalId], references: [id])
+  inicio             DateTime
+  fim                DateTime
+  status             StatusAgendamento @default(AGENDADO)
+  // Copiado do serviço no momento do agendamento: mudar o preço do catálogo
+  // depois não reescreve o histórico do que foi combinado com o cliente.
+  valor              Decimal?          @db.Decimal(10, 2)
+  observacoes        String?
+  motivoCancelamento String?
+
+  criadoPorId  String
+  criadoPor    Usuario   @relation("AgendamentoCriadoPor", fields: [criadoPorId], references: [id])
+  confirmadoEm DateTime?
+  iniciadoEm   DateTime?
+  concluidoEm  DateTime?
+  canceladoEm  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lojaId, inicio])
+  @@index([profissionalId, inicio])
+  @@index([clienteId, inicio])
+  @@map("agendamentos")
 }

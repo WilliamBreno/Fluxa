@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { InputSenha } from "@/components/ui/InputSenha";
 import { Select } from "@/components/ui/Select";
 import { Card } from "@/components/ui/Card";
 import { mensagemDeErro, useToast } from "@/components/ui/Toast";
@@ -80,9 +81,9 @@ export function CadastroPage() {
             onChange={(e) => setTelefone(e.target.value)}
             placeholder="(11) 99999-9999"
           />
-          <Input
+          <InputSenha
             label="Senha"
-            type="password"
+            autoComplete="new-password"
             required
             minLength={8}
             value={senha}

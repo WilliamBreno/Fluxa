@@ -48,6 +48,13 @@ async function main() {
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO fluxa_app;`);
   await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO fluxa_app;`);
   await prisma.$executeRawUnsafe(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO fluxa_app;`);
+  // Tabelas criadas por migrações futuras (rodando como este mesmo dono) já
+  // nascem com acesso para fluxa_app — sem isso, cada migração nova precisaria
+  // lembrar de um GRANT, e esquecer vira "permission denied" só em produção.
+  await prisma.$executeRawUnsafe(
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO fluxa_app;`
+  );
+  await prisma.$executeRawUnsafe(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO fluxa_app;`);
 
   console.log("Travando a auditoria: revogando UPDATE/DELETE de fluxa_app em audit_log...");
   await prisma.$executeRawUnsafe(`REVOKE UPDATE, DELETE, TRUNCATE ON "audit_log" FROM fluxa_app;`);

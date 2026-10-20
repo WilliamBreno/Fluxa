@@ -1,5 +1,17 @@
 import { NavLink } from "react-router-dom";
-import { ChartPie, CreditCard, LayoutDashboard, Settings, Store, Tag, Wallet, X, type LucideIcon } from "lucide-react";
+import {
+  CalendarDays,
+  ChartPie,
+  CreditCard,
+  LayoutDashboard,
+  Settings,
+  Store,
+  Tag,
+  Users,
+  Wallet,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { usePermissao } from "@/hooks/usePermissao";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -16,6 +28,9 @@ type ItemNav =
 const ITENS: ItemNav[] = [
   { to: "/terminais", label: "Caixas", Icone: Store },
   { to: "/dashboard", label: "Visão geral", Icone: LayoutDashboard, minimo: "SUPERVISOR" },
+  { secao: "Atendimento" },
+  { to: "/agenda", label: "Agenda", Icone: CalendarDays },
+  { to: "/clientes", label: "Clientes", Icone: Users },
   { secao: "Gestão" },
   { to: "/relatorios", label: "Relatórios", Icone: ChartPie, minimo: "SUPERVISOR" },
   { to: "/conciliacao", label: "Conciliação de cartões", Icone: CreditCard, minimo: "SUPERVISOR" },

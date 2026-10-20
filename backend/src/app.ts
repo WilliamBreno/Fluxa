@@ -23,6 +23,9 @@ import { cadastroRoutes } from "./modules/cadastro/cadastro.routes";
 import { planosRoutes } from "./modules/planos/planos.routes";
 import { assinaturaRoutes } from "./modules/assinatura/assinatura.routes";
 import { notificacoesRoutes } from "./modules/notificacoes/notificacoes.routes";
+import { clientesRoutes } from "./modules/clientes/clientes.routes";
+import { servicosRoutes } from "./modules/servicos/servicos.routes";
+import { agendamentosRoutes } from "./modules/agendamentos/agendamentos.routes";
 
 export const app = express();
 
@@ -53,6 +56,9 @@ app.use("/api/cadastro", cadastroRoutes);
 app.use("/api/planos", planosRoutes);
 app.use("/api/assinatura", assinaturaRoutes);
 app.use("/api/notificacoes", notificacoesRoutes);
+app.use("/api/clientes", clientesRoutes);
+app.use("/api/servicos", servicosRoutes);
+app.use("/api/agendamentos", agendamentosRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

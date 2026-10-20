@@ -42,7 +42,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-let refreshEmAndamento: Promise<string | null> | null = null;
+let refreshEmAndamento: Promise<string> | null = null;
+
+/**
+ * Único ponto de renovação de sessão. O refresh token é rotacionado a cada uso
+ * (o antigo é revogado), então duas chamadas concorrentes com o mesmo cookie
+ * fazem uma delas receber 401 — e, se essa resposta chegar por último, derruba
+ * a sessão que a outra acabou de renovar. Acontecia ao recarregar a página:
+ * o StrictMode roda o efeito de restauração duas vezes, e o interceptor abaixo
+ * pode disparar um terceiro refresh. Todas passam a compartilhar a mesma promessa.
+ */
+export function renovarSessao(): Promise<string> {
+  if (!refreshEmAndamento) {
+    refreshEmAndamento = api
+      .post<{ accessToken: string }>("/auth/refresh")
+      .then((r) => {
+        setAccessToken(r.data.accessToken);
+        return r.data.accessToken;
+      })
+      .finally(() => {
+        refreshEmAndamento = null;
+      });
+  }
+  return refreshEmAndamento;
+}
 
 api.interceptors.response.use(
   (response) => response,
@@ -61,18 +84,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry && !original.url?.includes("/auth/")) {
       original._retry = true;
       try {
-        if (!refreshEmAndamento) {
-          refreshEmAndamento = api
-            .post("/auth/refresh")
-            .then((r) => {
-              setAccessToken(r.data.accessToken);
-              return r.data.accessToken as string;
-            })
-            .finally(() => {
-              refreshEmAndamento = null;
-            });
-        }
-        const novoToken = await refreshEmAndamento;
+        const novoToken = await renovarSessao();
         if (novoToken) {
           original.headers.Authorization = `Bearer ${novoToken}`;
           return api(original);
