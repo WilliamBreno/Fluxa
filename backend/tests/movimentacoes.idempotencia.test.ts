@@ -20,8 +20,10 @@ const movimentacaoExistente = {
 };
 
 const prismaMock = {
-  turnoCaixa: { findUnique: vi.fn() },
-  movimentacaoCaixa: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+  // findFirst: lookup do turno preso à loja (criar); findUnique: saldoCaixa.util,
+  // que recebe o turnoId já validado.
+  turnoCaixa: { findFirst: vi.fn(), findUnique: vi.fn() },
+  movimentacaoCaixa: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
   integracaoLog: { create: vi.fn() },
   $transaction: vi.fn(),
 };
@@ -34,16 +36,17 @@ vi.mock("../src/modules/integracoes/integracoes.factory", () => ({
   getMaquininhaAdapter: () => ({ iniciarPagamento: vi.fn().mockResolvedValue({ sucesso: true, simulado: true }) }),
 }));
 
-const ctx = { usuarioId: "usuario-1", roleNaLoja: "OPERADOR" as const };
+const ctx = { usuarioId: "usuario-1", lojaId: "loja-1", roleNaLoja: "OPERADOR" as const };
 
 describe("movimentacoes.service.criar — idempotência", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.turnoCaixa.findFirst.mockResolvedValue(turnoMock);
     prismaMock.turnoCaixa.findUnique.mockResolvedValue(turnoMock);
   });
 
   it("retorna o registro existente sem criar de novo quando a chave já foi usada (checagem antecipada)", async () => {
-    prismaMock.movimentacaoCaixa.findUnique.mockResolvedValueOnce(movimentacaoExistente);
+    prismaMock.movimentacaoCaixa.findFirst.mockResolvedValueOnce(movimentacaoExistente);
 
     const { criar } = await import("../src/modules/movimentacoes/movimentacoes.service");
     const resultado = await criar(
@@ -57,7 +60,7 @@ describe("movimentacoes.service.criar — idempotência", () => {
   });
 
   it("em corrida de concorrência (P2002 no create), devolve o registro que a outra tentativa criou", async () => {
-    prismaMock.movimentacaoCaixa.findUnique
+    prismaMock.movimentacaoCaixa.findFirst
       .mockResolvedValueOnce(null) // checagem antecipada: ainda não existe
       .mockResolvedValueOnce(movimentacaoExistente); // depois do P2002: a outra tentativa já criou
 
@@ -78,7 +81,7 @@ describe("movimentacoes.service.criar — idempotência", () => {
   });
 
   it("sem chaveIdempotencia, segue o fluxo normal de criação", async () => {
-    prismaMock.movimentacaoCaixa.findUnique.mockResolvedValue(null);
+    prismaMock.movimentacaoCaixa.findFirst.mockResolvedValue(null);
     const movimentacaoNova = { ...movimentacaoExistente, id: "mov-nova", chaveIdempotencia: null };
     prismaMock.$transaction.mockImplementationOnce(async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock));
     prismaMock.movimentacaoCaixa.create.mockResolvedValueOnce(movimentacaoNova);

@@ -6,7 +6,8 @@ export const criarUsuarioSchema = z.object({
   email: z.string().email(),
   senha: z.string().min(6).max(100),
   roleGlobal: z.nativeEnum(RoleUsuario),
-  superAdmin: z.boolean().default(false),
+  // Só respeitado quando quem cria é superAdmin (checado no service).
+  superAdmin: z.boolean().optional(),
   lojaId: z.string().uuid().optional(),
 });
 

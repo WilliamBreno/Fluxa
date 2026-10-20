@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
+import { requireAuth, requireLoja, requireRole } from "../../middlewares/auth.middleware";
 import { validateBody } from "../../middlewares/validate";
 import { asyncHandler } from "../../middlewares/errorHandler";
 import { atualizarUsuarioSchema, criarUsuarioSchema, vincularLojaSchema } from "./usuarios.schemas";
@@ -11,7 +11,10 @@ import {
 } from "./usuarios.controller";
 
 export const usuariosRoutes = Router();
-usuariosRoutes.use(requireAuth);
+// requireLoja obrigatório: sem x-loja-id, requireRole cairia no roleGlobal e as
+// operações deixariam de ser presas a uma loja. Toda gestão de usuários é feita
+// dentro da loja selecionada, com o papel que o usuário tem nela.
+usuariosRoutes.use(requireAuth, requireLoja);
 
 usuariosRoutes.get("/", requireRole("SUPERVISOR"), asyncHandler(listarUsuariosController));
 usuariosRoutes.post(

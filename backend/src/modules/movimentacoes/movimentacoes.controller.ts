@@ -4,6 +4,8 @@ import * as movimentacoesService from "./movimentacoes.service";
 function contexto(req: Request) {
   return {
     usuarioId: req.usuario!.id,
+    // Loja validada pelo requireAuth; turno e movimentação precisam pertencer a ela.
+    lojaId: req.usuario!.lojaId!,
     roleNaLoja: req.usuario!.roleNaLoja,
     ip: req.ip,
     userAgent: req.headers["user-agent"],
@@ -21,6 +23,6 @@ export async function conferirMovimentacaoController(req: Request, res: Response
 }
 
 export async function listarMovimentacoesController(req: Request, res: Response) {
-  const movimentacoes = await movimentacoesService.listarPorTurno(req.params.turnoId);
+  const movimentacoes = await movimentacoesService.listarPorTurno(req.params.turnoId, req.usuario!.lojaId!);
   res.json(movimentacoes);
 }

@@ -11,6 +11,7 @@ import { getFiscalAdapter, getMaquininhaAdapter } from "../integracoes/integraco
 
 interface ContextoRequisicao {
   usuarioId: string;
+  lojaId: string;
   roleNaLoja?: RoleUsuarioKey;
   ip?: string;
   userAgent?: string;
@@ -44,14 +45,14 @@ export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx:
   // validação — um reenvio nunca deve falhar por o turno ter fechado
   // enquanto o cliente estava offline esperando confirmação.
   if (input.chaveIdempotencia) {
-    const existente = await prisma.movimentacaoCaixa.findUnique({
-      where: { chaveIdempotencia: input.chaveIdempotencia },
+    const existente = await prisma.movimentacaoCaixa.findFirst({
+      where: { chaveIdempotencia: input.chaveIdempotencia, turno: { lojaId: ctx.lojaId } },
     });
     if (existente) return existente;
   }
 
-  const turno = await prisma.turnoCaixa.findUnique({
-    where: { id: turnoId },
+  const turno = await prisma.turnoCaixa.findFirst({
+    where: { id: turnoId, lojaId: ctx.lojaId },
     include: { loja: { include: { configuracao: true } } },
   });
   if (!turno) throw new AppError("Turno não encontrado.", 404);
@@ -70,8 +71,9 @@ export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx:
 
   let vendaReferencia: MovimentacaoCaixa | null = null;
   if (input.tipo === "CANCELAMENTO" || input.tipo === "DEVOLUCAO") {
-    vendaReferencia = await prisma.movimentacaoCaixa.findUnique({
-      where: { id: input.vendaReferenciaId! },
+    // A venda estornada precisa ser da mesma loja do turno.
+    vendaReferencia = await prisma.movimentacaoCaixa.findFirst({
+      where: { id: input.vendaReferenciaId!, turno: { lojaId: turno.lojaId } },
     });
     if (!vendaReferencia || vendaReferencia.tipo !== "VENDA" || vendaReferencia.status !== "ATIVA") {
       throw new AppError("Venda de referência inválida, inexistente ou já estornada.", 400);
@@ -128,8 +130,8 @@ export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx:
     // abas, ou a fila offline reenviando antes de receber a 1ª confirmação):
     // quem perdeu a corrida apenas devolve o que a outra já criou.
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002" && input.chaveIdempotencia) {
-      const existente = await prisma.movimentacaoCaixa.findUnique({
-        where: { chaveIdempotencia: input.chaveIdempotencia },
+      const existente = await prisma.movimentacaoCaixa.findFirst({
+        where: { chaveIdempotencia: input.chaveIdempotencia, turno: { lojaId: ctx.lojaId } },
       });
       if (existente) return existente;
     }
@@ -236,8 +238,8 @@ export async function criar(turnoId: string, input: CriarMovimentacaoInput, ctx:
 }
 
 export async function conferir(movimentacaoId: string, ctx: ContextoRequisicao) {
-  const movimentacao = await prisma.movimentacaoCaixa.findUnique({
-    where: { id: movimentacaoId },
+  const movimentacao = await prisma.movimentacaoCaixa.findFirst({
+    where: { id: movimentacaoId, turno: { lojaId: ctx.lojaId } },
     include: { turno: true },
   });
   if (!movimentacao) throw new AppError("Movimentação não encontrada.", 404);
@@ -263,9 +265,9 @@ export async function conferir(movimentacaoId: string, ctx: ContextoRequisicao) 
   });
 }
 
-export async function listarPorTurno(turnoId: string) {
+export async function listarPorTurno(turnoId: string, lojaId: string) {
   return prisma.movimentacaoCaixa.findMany({
-    where: { turnoId },
+    where: { turnoId, turno: { lojaId } },
     include: {
       operador: { select: { id: true, nome: true } },
       conferidoPor: { select: { id: true, nome: true } },
